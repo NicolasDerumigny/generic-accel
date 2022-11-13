@@ -1,0 +1,7 @@
+.apc/
+.cproject
+.project
+.settings/
+.vitis_hls_log_all.xml
+Debug/
+zcu104/
