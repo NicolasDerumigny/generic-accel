@@ -201,7 +201,8 @@ static inline void agu (
 
 		case op::addm:
 		case op::subm:
-		case op::pmulm: {
+		case op::pmulm:
+		case op::absm: {
 			if (i==0) {
 				ld0_addr = access(j,k);
 				ld1_addr = access(j,k);
@@ -212,7 +213,8 @@ static inline void agu (
 
 		case op::addv:
 		case op::subv:
-		case op::pmulv: {
+		case op::pmulv:
+		case op::absv: {
 			if (i==0 and j==0) {
 				ld0_addr = access(0,k);
 				ld1_addr = access(0,k);
@@ -232,7 +234,8 @@ static inline void agu (
 
 		case op::muls:
 		case op::adds:
-		case op::subs: {
+		case op::subs:
+		case op::abss: {
 			if (i==0 && j==0 && k==0) {
 				ld0_addr = access(0,0);
 				ld1_addr = access(0,0);
@@ -324,6 +327,16 @@ static void fu_complete (
 		case op::subs: {
 			ap_uint<16> minus_in1 = *(ap_uint<16>*) &ld1;
 			minus_in1 = ( ((~minus_in1) & 0x8000) | (minus_in1 & 0x7FFF));
+			add_op1 = *(half*) &minus_in1;
+			add_op0 = ld0;
+			break;
+		}
+
+		case op::absm:
+		case op::absv:
+		case op::abss:{
+			ap_uint<16> minus_in1 = *(ap_uint<16>*) &ld1;
+			minus_in1 = minus_in1 & 0x7FFF;
 			add_op1 = *(half*) &minus_in1;
 			add_op0 = ld0;
 			break;

@@ -52,11 +52,11 @@ void generic_accel(
 void init_prgm(ap_uint<8> PRGM[MAX_PGM_SIZE][NB_FU][4]) {
 	init();
 
-    op1(addm, r[3], r[4], r[5]);
-    op0(subm, r[0], r[1], r[2]);
+    op0(addm, r[3], r[4], r[5]);
+    op1(subm, r[0], r[1], r[2]);
 
-    op0(noop, r[4], r[5], r[5]);
-    op1(mulmm, r[1], r[3], r[0]);
+    op0(mulmm, r[1], r[3], r[0]);
+    op1(noop, r[4], r[5], r[5]);
 
     halt();
 }
