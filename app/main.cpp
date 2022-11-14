@@ -118,7 +118,7 @@ int main() {
 
     u32 *pgrm_ptr = (u32 *)PRGM;
     XGeneric_accel_Write_pgm_Words(generic_accel, 0, pgrm_ptr,
-                                   sizeof(PRGM) / sizeof(PRGM[0][0][0]));
+                                   sizeof(PRGM) / sizeof(u32));
     XGeneric_accel_Set_data_in(generic_accel, reg_file.phy_addr());
     XGeneric_accel_Set_data_out(generic_accel, reg_file_out.phy_addr());
 
