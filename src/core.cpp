@@ -1,6 +1,7 @@
 #include "core.hpp"
 #include "dma.hpp"
 #include "hls_print.h"
+#include "hls_math.h"
 #include "ap_utils.h"
 
 #define max(a, b) ((a>b)?a:b)
@@ -125,32 +126,54 @@ static inline int lbg (macro_op_t ops[NB_FU]) {
 	for (int i=0; i<NB_FU; i++) {
 #		pragma HLS UNROLL
 		switch (ops[i].opcode) {
-		default:
-			break;
+			case op::noop: {
+				break;
+			}
 
-		case op::mulmm:
-			ret = max(ret, N*N*N);
-			break;
+			case op::mulmm: {
+				ret = max(ret, N*N*N);
+				break;
+			}
 
-		case op::mulmv:
-		case op::mulsm:
-		case op::trm:
-		case op::addm:
-		case op::subm:
-		case op::pmulm:
-		case op::oprodv:
-			ret = max(ret, N*N);
+			case op::mulmv:
+			case op::mulsm:
+			case op::trm:
+			case op::addm:
+			case op::subm:
+			case op::subcmv:
+			case op::pmulm:
+			case op::oprodv:
+			case op::absm:
+			case op::accsumcm:
+			case op::divms:
+			case op::divcmv:
+			case op::set0m:
+			case op::setidm:
+			case op::setd1: {
+				ret = max(ret, N*N);
+				break;
+			}
 
-		case op::mulsv:
-		case op::addv:
-		case op::subv:
-		case op::pmulv:
-			ret = max(ret, N);
+			case op::mulsv:
+			case op::addv:
+			case op::subv:
+			case op::pmulv:
+			case op::absv:
+			case op::sqrtv:
+			case op::cutminv:
+			case op::divvs: {
+				ret = max(ret, N);
+				break;
+			}
 
-		case op::muls:
-		case op::adds:
-		case op::subs:
-			ret = max(ret, 1);
+			case op::muls:
+			case op::adds:
+			case op::subs:
+			case op::abss:
+			case op::sqrts: {
+				ret = max(ret, 1);
+				break;
+			}
 		}
 	}
 	return ret;
@@ -179,6 +202,7 @@ static inline void agu (
 			if (i==0) {
 				ld0_addr = access(k,j);
 				ld1_addr = access(0,j);
+				st_addr = access(j,k);
 			}
 			break;
 		}
@@ -187,9 +211,21 @@ static inline void agu (
 			if (i==0) {
 				ld0_addr = access(0,0);
 				ld1_addr = access(j,k);
+				st_addr = access(j,k);
 			}
 			break;
 		}
+
+
+		case op::divms: {
+			if (i==0) {
+				ld0_addr = access(j,k);
+				ld1_addr = access(0,0);
+				st_addr = access(j,k);
+			}
+			break;
+		}
+
 
 		case op::trm: {
 			if (i==0) {
@@ -201,8 +237,7 @@ static inline void agu (
 
 		case op::addm:
 		case op::subm:
-		case op::pmulm:
-		case op::absm: {
+		case op::pmulm: {
 			if (i==0) {
 				ld0_addr = access(j,k);
 				ld1_addr = access(j,k);
@@ -213,8 +248,7 @@ static inline void agu (
 
 		case op::addv:
 		case op::subv:
-		case op::pmulv:
-		case op::absv: {
+		case op::pmulv: {
 			if (i==0 and j==0) {
 				ld0_addr = access(0,k);
 				ld1_addr = access(0,k);
@@ -222,6 +256,7 @@ static inline void agu (
 			}
 			break;
 		}
+
 
 		case op::mulsv: {
 			if (i==0 and j==0) {
@@ -232,10 +267,18 @@ static inline void agu (
 			break;
 		}
 
+		case op::divvs:{
+			if (i==0 and j==0) {
+				ld0_addr = access(0,k);
+				ld1_addr = access(0,0);
+				st_addr = access(0,k);
+			}
+			break;
+		}
+
 		case op::muls:
 		case op::adds:
-		case op::subs:
-		case op::abss: {
+		case op::subs: {
 			if (i==0 && j==0 && k==0) {
 				ld0_addr = access(0,0);
 				ld1_addr = access(0,0);
@@ -253,7 +296,68 @@ static inline void agu (
 			break;
 		}
 
-		default: {
+		case op::subcmv:
+		case op::divcmv: {
+			if (i==0) {
+				ld0_addr = access(j,k);
+				ld1_addr = access(0,k);
+				st_addr = access(j,k);
+			}
+			break;
+		}
+
+		case op::accsumcm: {
+			if (i==0) {
+				ld0_addr = access(j,k);
+				st_addr = access(0,k);
+			}
+			break;
+		}
+
+		case op::absm: {
+			if (i==0) {
+				ld0_addr = access(j,k);
+				st_addr = access(j,k);
+			}
+			break;
+		}
+
+		case op::set0m:
+		case op::setidm: {
+			if (i==0) {
+				st_addr = access(j,k);
+			}
+			break;
+		}
+
+		case op::absv:
+		case op::sqrtv:
+		case op::cutminv: {
+			if (i==0 and j==0) {
+				ld0_addr = access(0,k);
+				st_addr = access(0,k);
+			}
+			break;
+		}
+
+		case op::abss:
+		case op::sqrts: {
+			if (i==0 and j==0 and k==0) {
+				ld0_addr = access(0,0);
+				st_addr = access(0,0);
+			}
+			break;
+		}
+
+		case op::setd1: {
+			if (i==0) {
+				ld0_addr = access(j,k);
+				st_addr = access(j,k);
+			}
+			break;
+		}
+
+		case op::noop: {
 			break;
 		}
 	}
@@ -324,7 +428,8 @@ static void fu_complete (
 
 		case op::subm:
 		case op::subv:
-		case op::subs: {
+		case op::subs:
+		case op::subcmv: {
 			ap_uint<16> minus_in1 = *(ap_uint<16>*) &ld1;
 			minus_in1 = ( ((~minus_in1) & 0x8000) | (minus_in1 & 0x7FFF));
 			add_op1 = *(half*) &minus_in1;
@@ -334,15 +439,56 @@ static void fu_complete (
 
 		case op::absm:
 		case op::absv:
-		case op::abss:{
-			ap_uint<16> minus_in1 = *(ap_uint<16>*) &ld1;
+		case op::abss: {
+			ap_uint<16> minus_in1 = *(ap_uint<16>*) &ld0;
 			minus_in1 = minus_in1 & 0x7FFF;
 			add_op1 = *(half*) &minus_in1;
-			add_op0 = ld0;
 			break;
 		}
 
-		default: {
+		case op::sqrtv:
+		case op::sqrts: {
+			st = hls::half_sqrt(ld0);
+			break;
+		}
+
+		case op::accsumcm: {
+			add_op1 = ld0;
+			if (j==0)
+				add_op0 = 0;
+			else
+				add_op0 = ld_st;
+			break;
+		}
+
+		case op::cutminv: {
+			st = (ld0<=CUTOFF)?(half)1.0:ld0;
+			break;
+		}
+
+		case op::divms:
+		case op::divvs:
+		case op::divcmv: {
+			st = ld0/ld1;
+			break;
+		}
+
+		case op::set0m: {
+			st = 0;
+			break;
+		}
+
+		case op::setidm: {
+			st = (i==j);
+			break;
+		}
+
+		case op::setd1:{
+			st = (j==k)?(half)1.0f:ld0;
+			break;
+		}
+
+		case op::noop: {
 			break;
 		}
 	}
@@ -351,10 +497,12 @@ static void fu_complete (
 		case op::addv:
 		case op::adds:
 		case op::subm:
+		case op::subcmv:
 		case op::subv:
 		case op::subs:
 		case op::mulmm:
-		case op::mulmv: {
+		case op::mulmv:
+		case op::accsumcm: {
 			st = add_op0 + add_op1;
 			break;
 		}

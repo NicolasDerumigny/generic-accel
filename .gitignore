@@ -6,6 +6,7 @@
 *.inc
 *.o
 Debug/
+zcu104/csynth.tcl
 zcu104/csim
 zcu104/syn
 zcu104/.autopilot/

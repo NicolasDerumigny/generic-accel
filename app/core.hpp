@@ -9,8 +9,11 @@ constexpr int NB_FU_MUL = 0;
 constexpr int NB_FU_ADD = 1;
 
 constexpr int NB_FU = NB_FU_GEN + NB_FU_ADD + NB_FU_MUL;
-constexpr int REG_SIZ = 3*NB_FU; // 3 input per FU
-constexpr int MAX_PGM_SIZE = 16;
+//constexpr int REG_SIZ = 3*NB_FU; // 3 input per FU
+constexpr int REG_SIZ = 16; // Upper bound for correlation
+constexpr int MAX_PGM_SIZE = 128;
+
+constexpr float CUTOFF = 0.1f;
 
 /** Inplace operations are supported, except on:
  * - mulmm
@@ -22,25 +25,37 @@ constexpr int MAX_PGM_SIZE = 16;
  * FU also results in undefined behaviour
  */
 enum op : uint8_t {
-	noop = 0,
-	mulmm   = 1,
-	mulmv   = 2,
-	mulsm   = 3,
-	mulsv   = 4,
-	muls    = 5,
-	trm     = 6,
-	addm    = 7,
-	addv    = 8,
-	adds    = 9,
-	subm    = 10,
-	subv    = 11,
-	subs    = 12,
-	pmulm   = 13,  // Point-wise mul: hadamard product
-	pmulv   = 14,  // Point-wise mul
-	oprodv  = 15,
-	absm    = 16,
-	absv    = 17,
-	abss    = 18,
+	noop     = 0,
+	mulmm    = 1,
+	mulmv    = 2,
+	mulsm    = 3,
+	mulsv    = 4,
+	muls     = 5,
+	trm      = 6,
+	addm     = 7,
+	addv     = 8,
+	adds     = 9,
+	subm     = 10,
+	subcmv   = 11, // Point-wise substraction with column-wise (line-independant) value
+	subv     = 12,
+	subs     = 13,
+	pmulm    = 14,  // Point-wise mul: hadamard product
+	pmulv    = 15,  // Point-wise mul
+	oprodv   = 16,
+	absm     = 17,
+	absv     = 18,
+	abss     = 19,
+	sqrtv    = 20,
+	sqrts    = 21,
+	accsumcm = 22,  // Accumulation of matrix in a vector by column-wise
+				   // (line-indepedant) sum of all the elements
+	cutminv  = 23,  // Pointwise selection: `if coef < threshold 1 else coef`
+	divms    = 24,  // Pointwise division of matrices
+	divvs    = 25,  // Pointwise division of vectors
+	divcmv   = 26,  // Point-wise division with column-wise (line-independant) value
+	set0m    = 27,
+	setidm   = 28,
+	setd1    = 29,
 };
 
 using op_t = enum op;
