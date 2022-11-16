@@ -1,10 +1,10 @@
-
+LDFLAGS=-Llib -lcma -lpthread -lm
 
 all: generic_accel.elf
 
 
 generic_accel.elf: drivers/xgeneric_accel_linux.o drivers/xgeneric_accel.o main.o
-	g++ $^ -Llib -lcma -lpthread -o $@
+	g++ $^ $(LDFLAGS) -o $@
 
 gen_file: prgm.inc
 
@@ -18,7 +18,7 @@ drivers/xgeneric_accel_linux.o: drivers/xgeneric_accel_linux.c
 drivers/xgeneric_accel.o: drivers/xgeneric_accel.c
 	g++ $^  -c -o $@
 
-prgm.inc: prgm1.S
+prgm.inc: prgm.S
 	./compil $^
 
 clean:

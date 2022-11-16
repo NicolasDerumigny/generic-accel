@@ -5,6 +5,7 @@
 
 #include "arm.h"
 #include "lib/cma.hpp"
+#include "math.h"
 
 #include "core.hpp"
 #include "drivers/xgeneric_accel.h"
@@ -56,6 +57,17 @@ alignas(uint32_t) uint8_t PRGM[MAX_PGM_SIZE][NB_FU][4];
 void init_prgm() {
     init();
 
+    int float_n = r[0];
+    int sqrtfloat_n = r[1];
+    int data = r[2];
+    int corr = r[3];
+    int mean = r[4];
+    int stddev = r[5];
+    int tmp1 = r[6];
+    int tmp2 = r[7];
+    int tmp3 = r[8];
+    int null = -1;
+
 #include "prgm.inc"
     // op0(msub, r0, r1, r2);
     // op1(madd, r3, r4, r5);
@@ -104,10 +116,18 @@ int main() {
     CMA<half> reg_file(REG_SIZ * N * N);
     CMA<half> reg_file_out(REG_SIZ * N * N);
     std::cout << "Allocation done" << std::endl;
+    int val = -64;
     for (int id = 0; id < REG_SIZ; ++id) {
         for (int i = 0; i < N; i++) {
             for (int j = 0; j < N; j++) {
-                reg_file[access(id, i, j)] = (i == j) ? 1 : 0;
+                if (id == 0) {
+                    reg_file[access(id, i, j)] = (i == 0 and j == 0) ? N : 0;
+                } else if (id == 1) {
+                    reg_file[access(id, i, j)] = (i == 0 and j == 0) ? sqrt(N) : 0;
+                } else {
+                    reg_file[access(id, i, j)] = i - j + (float)val / 100;
+                    val++;
+                }
                 reg_file_out[access(id, i, j)] = 0;
             }
         }

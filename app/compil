@@ -3,26 +3,39 @@ import sys
 
 NB_FU = 2
 
+
 def usage():
     print(f"{sys.argv[0]} <infile.S>")
 
+
+def get_reg_value(reg: str):
+    if reg.startswith("r"):
+        return f"r[{reg.replace(' ', '')[1:]}]"
+    else:
+        return reg
+
+
 def transform_file(infile, outfile):
-    with open(outfile, 'w') as file_out:
-        with open(infile, 'r') as file_in:
+    with open(outfile, "w") as file_out:
+        with open(infile, "r") as file_in:
             fu_id = 0
             for line in file_in:
-                line = line [:-1] # remove final '\0'
-                if len(line) == 0 or line[0] in {'#', ';'}:
-                    continue;
-                if line == 'noop':
+                line = line[:-1]  # remove final '\0'
+                if len(line) == 0 or line[0] in {"#", ";"}:
+                    continue
+                if line == "noop":
                     opcode = line
-                    args = ['r[0]', 'r[0]', 'r[0]']
+                    args = ["null", "null", "null"]
                 else:
-                    args = line.split(',')
-                    expr = args[0].split(' ')
+                    args = line.split(",")
+                    expr = args[0].split(" ")
                     opcode = expr[0]
-                    args[0] = expr[1]
-                    args = [ f'r[{a.replace(" ", "")[1:]}]' for a in args ]
+                    if len(expr) > 1:
+                        args[0] = expr[1]
+                        args = [f"{get_reg_value(a)}" for a in args]
+                    else:
+                        args = []
+                    args += ["null" for _ in range(3 - len(args))]
                 file_out.write(f"op{fu_id}({opcode}, {', '.join(args)});\n")
                 fu_id += 1
                 fu_id = fu_id % NB_FU
@@ -30,11 +43,12 @@ def transform_file(infile, outfile):
 
 
 def main():
-    if (len(sys.argv) != 2):
+    if len(sys.argv) != 2:
         usage()
         exit(2)
 
     transform_file(sys.argv[1], "prgm.inc")
+
 
 if __name__ == "__main__":
     main()
