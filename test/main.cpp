@@ -75,12 +75,17 @@ void init_prgm(ap_uint<8> PRGM[MAX_PGM_SIZE][NB_FU][4]) {
 	const int null = -1;
 	init();
 
-	op0(addtrm, r[3], r[4], r[5]);
-	op1(subm, r[0], r[1], r[2]);
-
-
-	op0(mulmm, r[1], r[3], r[0]);
+	op0(addm, r[3], r[4], r[5]);
 	op1(noop, null, null, null);
+	op2(noop, null, null, null);
+
+	op0(subm, r[0], r[1], r[2]);
+	op1(noop, null, null, null);
+	op2(noop, null, null, null);
+
+	op1(noop, null, null, null);
+	op0(mulmm, r[1], r[3], r[0]);
+	op2(noop, null, null, null);
 
 	halt();
 }
@@ -182,8 +187,6 @@ int main() {
 		for (int i=0; i<N; i++) {
 			for (int j=0; j<N; j++) {
 				reg_file[access(id, i, j)] = (i==j)?1:0;
-				if (id == 4 and i<j)
-					reg_file[access(id, i, j)] = 1;
 			}
 		}
 	}

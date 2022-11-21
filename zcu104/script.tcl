@@ -3,17 +3,17 @@
 ## Please DO NOT edit it.
 ## Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
 ############################################################
-open_project generic-accel
+open_project accel-hlac
 set_top generic_accel
-add_files generic-accel/src/dma.hpp
-add_files generic-accel/src/core.hpp
-add_files generic-accel/src/core.cpp
-add_files -tb generic-accel/test/main.cpp -cflags "-Wno-unknown-pragmas -Wno-unknown-pragmas -Wno-unknown-pragmas -Wno-unknown-pragmas -Wno-unknown-pragmas -Wno-unknown-pragmas -Wno-unknown-pragmas -Wno-unknown-pragmas -Wno-unknown-pragmas -Wno-unknown-pragmas -Wno-unknown-pragmas -Wno-unknown-pragmas" -csimflags "-Wno-unknown-pragmas"
+add_files accel-hlac/src/core.cpp
+add_files accel-hlac/src/core.hpp
+add_files accel-hlac/src/dma.hpp
+add_files -tb accel-hlac/test/main.cpp
 open_solution "zcu104" -flow_target vivado
 set_part {xczu7ev-ffvc1156-2-e}
 create_clock -period 10 -name default
 config_export -flow impl -format ip_catalog -rtl verilog -vivado_clock 10 -vivado_phys_opt all
-source "./generic-accel/zcu104/directives.tcl"
+source "./accel-hlac/zcu104/directives.tcl"
 csim_design
 csynth_design
 cosim_design
