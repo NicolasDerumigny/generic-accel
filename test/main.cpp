@@ -24,41 +24,70 @@ void generic_accel(
 		i=0
 
 #define op0(o, rd, ra, rb) do{\
-		PRGM[i/2][0][0]=(uint8_t) op::o;\
-		PRGM[i/2][0][1]=rd;\
-		PRGM[i/2][0][2]=ra;\
-		PRGM[i/2][0][3]=rb;\
+		PRGM[i/NB_FU][0][0]=(uint8_t) op::o;\
+		PRGM[i/NB_FU][0][1]=rd;\
+		PRGM[i/NB_FU][0][2]=ra;\
+		PRGM[i/NB_FU][0][3]=rb;\
 		i++;\
 } while (0)
 
 #define op1(o, rd, ra, rb) do{\
-		PRGM[i/2][1][0]=(uint8_t) op::o;\
-		PRGM[i/2][1][1]=rd;\
-		PRGM[i/2][1][2]=ra;\
-		PRGM[i/2][1][3]=rb;\
+		PRGM[i/NB_FU][1][0]=(uint8_t) op::o;\
+		PRGM[i/NB_FU][1][1]=rd;\
+		PRGM[i/NB_FU][1][2]=ra;\
+		PRGM[i/NB_FU][1][3]=rb;\
+		i++;\
+} while (0)
+
+#define op2(o, rd, ra, rb) do{\
+		PRGM[i/NB_FU][2][0]=(uint8_t) op::o;\
+		PRGM[i/NB_FU][2][1]=rd;\
+		PRGM[i/NB_FU][2][2]=ra;\
+		PRGM[i/NB_FU][2][3]=rb;\
+		i++;\
+} while (0)
+
+#define op3(o, rd, ra, rb) do{\
+		PRGM[i/NB_FU][3][0]=(uint8_t) op::o;\
+		PRGM[i/NB_FU][3][1]=rd;\
+		PRGM[i/NB_FU][3][2]=ra;\
+		PRGM[i/NB_FU][3][3]=rb;\
 		i++;\
 } while (0)
 
 #define halt() do {\
-		PRGM[i/2][0][0]=(uint8_t) op::noop;\
-		PRGM[i/2][0][1]=0;\
-		PRGM[i/2][0][2]=0;\
-		PRGM[i/2][0][3]=0;\
-		PRGM[i/2][1][0]=(uint8_t) op::noop;\
-		PRGM[i/2][1][1]=0;\
-		PRGM[i/2][1][2]=0;\
-		PRGM[i/2][1][3]=0;\
-		i+=2;\
+		PRGM[i/NB_FU][0][0]=(uint8_t) op::noop;\
+		PRGM[i/NB_FU][0][1]=0;\
+		PRGM[i/NB_FU][0][2]=0;\
+		PRGM[i/NB_FU][0][3]=0;\
+		PRGM[i/NB_FU][1][0]=(uint8_t) op::noop;\
+		PRGM[i/NB_FU][1][1]=0;\
+		PRGM[i/NB_FU][1][2]=0;\
+		PRGM[i/NB_FU][1][3]=0;\
+		PRGM[i/NB_FU][2][0]=(uint8_t) op::noop;\
+		PRGM[i/NB_FU][2][1]=0;\
+		PRGM[i/NB_FU][2][2]=0;\
+		PRGM[i/NB_FU][2][3]=0;\
+		PRGM[i/NB_FU][3][0]=(uint8_t) op::noop;\
+		PRGM[i/NB_FU][3][1]=0;\
+		PRGM[i/NB_FU][3][2]=0;\
+		PRGM[i/NB_FU][3][3]=0;\
+		i+=4;\
 } while (0)
 
 void init_prgm_simple(ap_uint<8> PRGM[MAX_PGM_SIZE][NB_FU][4]) {
+	int null = -1;
 	init();
 
 	op0(addm, r[3], r[4], r[5]);
 	op1(subm, r[0], r[1], r[2]);
+	op2(noop, null, null, null);
+	op3(noop, null, null, null);
 
 	op0(mulmm, r[1], r[3], r[0]);
-	op1(noop, r[4], r[5], r[5]);
+	op1(noop, null, null, null);
+	op2(noop, null, null, null);
+	op3(noop, null, null, null);
 
 	halt();
 }
@@ -77,53 +106,79 @@ void init_prgm(ap_uint<8> PRGM[MAX_PGM_SIZE][NB_FU][4]) {
 	int tmp3 = r[8];
 	int null = -1;
 
-	op0(set0m, mean, null, null);
-	op1(noop, null, null, null);
+	//op0(set0m, mean, null, null);
+	//op1(noop, null, null, null);
 
 	op0(accsumcm, mean, data, null);
 	op1(noop, null, null, null);
+	op2(noop, null, null, null);
+	op3(noop, null, null, null);
 
-	op0(divvs, mean, mean, float_n);
+	op3(divvs, mean, mean, float_n);
 	op1(noop, null, null, null);
+	op2(noop, null, null, null);
+	op0(noop, null, null, null);
 
-	op0(set0m, stddev, null, null);
-	op1(noop, null, null, null);
-
-	op0(subcmv, tmp1, data, mean);
-	op1(noop, null, null, null);
-
-	op0(pmulm, tmp2, tmp1, tmp1);
-	op1(noop, null, null, null);
-
-	op0(accsumcm, stddev, tmp2, null);
-	op1(noop, null, null, null);
-
-	op0(divms, stddev, stddev, float_n);
-	op1(noop, null, null, null);
-
-	op0(sqrtv, stddev, stddev, null);
-	op1(noop, null, null, null);
-
-	op0(cutminv, stddev, stddev, null);
-	op1(noop, null, null, null);
+	//op0(set0m, stddev, null, null);
+	//op1(noop, null, null, null);
 
 	op0(subcmv, data, data, mean);
 	op1(noop, null, null, null);
+	op2(noop, null, null, null);
+	op3(noop, null, null, null);
+
+	op0(pmulm, tmp1, data, data);
+	op1(noop, null, null, null);
+	op2(noop, null, null, null);
+	op3(noop, null, null, null);
+
+	op0(accsumcm, stddev, tmp1, null);
+	op1(noop, null, null, null);
+	op2(noop, null, null, null);
+	op3(noop, null, null, null);
+
+	op3(divms, stddev, stddev, float_n);
+	op1(noop, null, null, null);
+	op2(noop, null, null, null);
+	op0(noop, null, null, null);
+
+	op0(sqrtv, stddev, stddev, null);
+	op1(noop, null, null, null);
+	op2(noop, null, null, null);
+	op3(noop, null, null, null);
+
+	op0(cutminv, stddev, stddev, null);
+	op1(noop, null, null, null);
+	op2(noop, null, null, null);
+	op3(noop, null, null, null);
+
+	//op0(subcmv, data, data, mean);
+	//op1(noop, null, null, null);
 
 	op0(mulsv, stddev, sqrtfloat_n, stddev);
 	op1(noop, null, null, null);
+	op2(noop, null, null, null);
+	op3(noop, null, null, null);
 
-	op0(divcmv, data, data, stddev);
+	op3(divcmv, data, data, stddev);
 	op1(noop, null, null, null);
+	op2(noop, null, null, null);
+	op0(noop, null, null, null);
 
-	op0(trm, tmp3, data, null);
+	op0(trm, tmp1, data, null);
 	op1(noop, null, null, null);
+	op2(noop, null, null, null);
+	op3(noop, null, null, null);
 
-	op0(mulmm, corr, tmp3, data);
+	op0(mulmm, corr, tmp1, data);
 	op1(noop, null, null, null);
+	op2(noop, null, null, null);
+	op3(noop, null, null, null);
 
 	op0(setd1, corr, corr, null);
 	op1(noop, null, null, null);
+	op2(noop, null, null, null);
+	op3(noop, null, null, null);
 
 	halt();
 }
@@ -210,8 +265,8 @@ int main() {
 	std::cout<<"Starting..."<<std::endl;
 	// Initialise our data structures
 	ap_uint<8> PRGM[MAX_PGM_SIZE][NB_FU][4];
-	//init_prgm_simple (PRGM);
-	init_prgm(PRGM);
+	init_prgm_simple (PRGM);
+	//init_prgm(PRGM);
 
 	std::cout<<"Init data..."<<std::endl;
 	// Initialise the channels
@@ -224,7 +279,8 @@ int main() {
 	for (int id=0; id<REG_SIZ; ++id) {
 		for (int i=0; i<N; i++) {
 			for (int j=0; j<N; j++) {
-				if (id == 0) {
+				reg_file[access(id, i, j)] = (i==j)?1:0;
+				/*if (id == 0) {
 					reg_file[access(id, i, j)] = (i==0 and j==0)?N:0;
 				} else if (id == 1) {
 					reg_file[access(id, i, j)] = (i==0 and j==0)?hls::sqrt(N):0;
@@ -236,7 +292,7 @@ int main() {
 				if (id == 2) {
 					corr[i][j] = 100000;
 					data[i][j] = reg_file[access(id, i, j)];
-				}
+				}*/
 			}
 		}
 	}
@@ -258,7 +314,7 @@ int main() {
 
 	print_reg_file(reg_file_out);
 
-	print_matrix(corr);
+	//print_matrix(corr);
 
 	std::cout<<"Executed for matrix of size ";
 	std::cout<<N<<"x"<<N<<std::endl;

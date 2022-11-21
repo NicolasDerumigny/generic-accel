@@ -4,14 +4,15 @@
 
 constexpr int N = 64;
 
-constexpr int NB_FU_GEN = 1;
+constexpr int NB_FU_GEN = 3;
 constexpr int NB_FU_MUL = 0;
-constexpr int NB_FU_ADD = 1;
+constexpr int NB_FU_ADD = 0;
+constexpr int NB_FU_DIVSQRT= 1;
 
-constexpr int NB_FU = NB_FU_GEN + NB_FU_ADD + NB_FU_MUL;
+constexpr int NB_FU = NB_FU_GEN + NB_FU_ADD + NB_FU_MUL + NB_FU_DIVSQRT;
 //constexpr int REG_SIZ = 3*NB_FU; // 3 input per FU
-constexpr int REG_SIZ = 16; // Upper bound for correlation
-constexpr int MAX_PGM_SIZE = 128;
+constexpr int REG_SIZ = 27; // Upper bound for correlation is 5 per pb + 2 cst
+constexpr int MAX_PGM_SIZE = 64; // to be large
 
 constexpr float CUTOFF = 0.1f;
 
@@ -24,6 +25,7 @@ constexpr float CUTOFF = 0.1f;
  * Concurrent writing on the same register by two
  * FU also results in undefined behaviour
  */
+//enum op : uint8_t {
 enum op : uint8_t {
 	noop     = 0,
 	mulmm    = 1,
@@ -60,12 +62,24 @@ enum op : uint8_t {
 
 using op_t = enum op;
 
+#ifdef __SYNTHESIS__
+# include "ap_int.h"
+
+struct s_macro_op_t {
+	op_t opcode;
+	ap_uint<5> r_dst;
+	ap_uint<5> r0;
+	ap_uint<5> r1;
+};
+#else
 struct s_macro_op_t {
 	op_t opcode;
 	uint8_t r_dst;
 	uint8_t r0;
 	uint8_t r1;
 };
+#endif
+
 using macro_op_t = struct s_macro_op_t;
 
 static_assert(sizeof(macro_op_t) == sizeof(uint32_t));

@@ -124,7 +124,6 @@ static inline void recv_pgm (ap_uint<8> op_loc[MAX_PGM_SIZE*NB_FU*4], ap_uint<8>
 static inline int lbg (macro_op_t ops[NB_FU]) {
 	int ret = 0;
 	for (int i=0; i<NB_FU; i++) {
-#		pragma HLS UNROLL
 		switch (ops[i].opcode) {
 			case op::noop: {
 				break;
@@ -363,7 +362,20 @@ static inline void agu (
 	}
 }
 
-static void fu_complete (
+inline half do_minus(half value) {
+	ap_uint<16> minus_in = *(ap_uint<16>*) &value;
+	minus_in = ( ((~minus_in) & 0x8000) | (minus_in & 0x7FFF));
+	return *(half*) &minus_in;
+}
+
+
+inline half do_abs(half value) {
+	ap_uint<16> abs = *(ap_uint<16>*) &value;
+	abs = abs & 0x7FFF;
+	return *(half*) &abs;
+}
+
+static void fu_addmul (
 		op_t op,
 		half &st, half ld0, half ld1,
 		int i, int j, int k) {
@@ -404,9 +416,10 @@ static void fu_complete (
 			break;
 		}
 
-		case op::trm:
+		case op::trm: {
 			st = ld0;
 			break;
+		}
 
 		case op::addm:
 		case op::addv:
@@ -430,25 +443,8 @@ static void fu_complete (
 		case op::subv:
 		case op::subs:
 		case op::subcmv: {
-			ap_uint<16> minus_in1 = *(ap_uint<16>*) &ld1;
-			minus_in1 = ( ((~minus_in1) & 0x8000) | (minus_in1 & 0x7FFF));
-			add_op1 = *(half*) &minus_in1;
+			add_op1 = do_minus(ld1);
 			add_op0 = ld0;
-			break;
-		}
-
-		case op::absm:
-		case op::absv:
-		case op::abss: {
-			ap_uint<16> minus_in1 = *(ap_uint<16>*) &ld0;
-			minus_in1 = minus_in1 & 0x7FFF;
-			add_op1 = *(half*) &minus_in1;
-			break;
-		}
-
-		case op::sqrtv:
-		case op::sqrts: {
-			st = hls::half_sqrt(ld0);
 			break;
 		}
 
@@ -463,13 +459,6 @@ static void fu_complete (
 
 		case op::cutminv: {
 			st = (ld0<=CUTOFF)?(half)1.0:ld0;
-			break;
-		}
-
-		case op::divms:
-		case op::divvs:
-		case op::divcmv: {
-			st = ld0/ld1;
 			break;
 		}
 
@@ -513,6 +502,64 @@ static void fu_complete (
 	}
 }
 
+static void fu_divsqrt (
+		op_t op,
+		half &st, half ld0, half ld1,
+		int i, int j, int k) {
+#	pragma HLS inline off
+# 	pragma HLS pipeline II=1
+# 	pragma HLS allocation operation instances=hadd limit=1
+# 	pragma HLS allocation operation instances=hmul limit=1
+	half ld_st = st;
+	half add_op0, add_op1;
+
+	switch (op) {
+		default: {
+			break;
+		}
+
+		case op::trm: {
+			st = ld0;
+			break;
+		}
+
+		case op::sqrtv:
+		case op::sqrts: {
+//#pragma HLS bind_op variable=st op=hsqrt impl=dsp
+			st = hls::half_sqrt(ld0);
+			break;
+		}
+
+
+		case op::divms:
+		case op::divvs:
+		case op::divcmv: {
+//#pragma HLS bind_op variable=st op=hdiv impl=dsp
+			st = ld0/ld1;
+			break;
+		}
+
+		case op::set0m: {
+			st = 0;
+			break;
+		}
+
+		case op::setidm: {
+			st = (i==j);
+			break;
+		}
+
+		case op::setd1:{
+			st = (j==k)?(half)1.0f:ld0;
+			break;
+		}
+
+		case op::noop: {
+			break;
+		}
+	}
+}
+
 static void fu_mul (
 		op_t op,
 		half &st, half ld0, half ld1,
@@ -546,6 +593,8 @@ static void fu_mul (
 			break;
 		}
 
+		case op::mulsm:
+		case op::mulsv:
 		case op::muls:
 		case op::pmulm:
 		case op::pmulv:
@@ -571,11 +620,7 @@ static void fu_add (
 	half add_op0, add_op1;
 
 	switch (op) {
-		case op::addm:
-		case op::addv:
-		case op::adds: {
-			add_op0 = ld0;
-			add_op1 = ld1;
+		default: {
 			break;
 		}
 
@@ -584,28 +629,65 @@ static void fu_add (
 			break;
 		}
 
+		case op::addm:
+		case op::addv:
+		case op::adds: {
+			add_op0 = ld0;
+			add_op1 = ld1;
+			break;
+		}
+
 		case op::subm:
 		case op::subv:
-		case op::subs: {
-			ap_uint<16> minus_in1 = *(ap_uint<16>*) &ld1;
-			minus_in1 = ( ((~minus_in1) & 0x8000) | (minus_in1 & 0x7FFF));
-			add_op1 = *(half*) &minus_in1;
+		case op::subs:
+		case op::subcmv: {
+			add_op1 = do_minus(ld1);
 			add_op0 = ld0;
 			break;
 		}
 
-		default: {
+		case op::absm:
+		case op::absv:
+		case op::abss: {
+			st = do_abs(ld0);
+			break;
+		}
+
+		case op::accsumcm: {
+			add_op1 = ld0;
+			if (j==0)
+				add_op0 = 0;
+			else
+				add_op0 = ld_st;
+			break;
+		}
+
+		case op::set0m: {
+			st = 0;
+			break;
+		}
+
+		case op::setidm: {
+			st = (i==j);
+			break;
+		}
+
+		case op::setd1:{
+			st = (j==k)?(half)1.0f:ld0;
 			break;
 		}
 	}
-
 	switch (op) {
 		case op::addm:
 		case op::addv:
 		case op::adds:
 		case op::subm:
+		case op::subcmv:
 		case op::subv:
-		case op::subs: {
+		case op::subs:
+		case op::mulmm:
+		case op::mulmv:
+		case op::accsumcm: {
 			st = add_op0 + add_op1;
 			break;
 		}
@@ -769,17 +851,15 @@ static inline void multiple_write_tbl (
 	int i, j;
 	for (i=0; i<REG_SIZ; i++) {
 #		pragma HLS unroll
-		int offset = -1;
-		half value = 0;
+		int the_one = -1;
 		for (j=0; j<NB_FU; j++) {
 #			pragma HLS unroll
 			if (ops[j].r_dst == i) {
-				offset = st_addr[j];
-				value = st[j];
+				the_one = j;
 			}
 		}
-		if (offset>=0)
-			reg_file[i][offset] = value;
+		if (the_one>=0)
+			reg_file[i][st_addr[the_one]] = st[the_one];
 	}
 }
 
@@ -842,11 +922,15 @@ int core(
 #			pragma HLS unroll
 			st_g[1][id] = st_g[0][id];
 			if (id<NB_FU_GEN) {
-				fu_complete(ops[id].opcode,
+				fu_addmul(ops[id].opcode,
 					st_g[1][id], ld0[id], ld1[id],
 					i, j, k);
 			} else if (id<(NB_FU_GEN + NB_FU_MUL)) {
 				fu_mul(ops[id].opcode,
+					st_g[1][id], ld0[id], ld1[id],
+					i, j, k);
+			} else if (id<(NB_FU_GEN + NB_FU_MUL + NB_FU_DIVSQRT)) {
+				fu_divsqrt(ops[id].opcode,
 					st_g[1][id], ld0[id], ld1[id],
 					i, j, k);
 			} else {
@@ -933,7 +1017,7 @@ void generic_accel(
 #	pragma HLS ARRAY_PARTITION variable=reg_file dim=1 complete
 #	pragma HLS ARRAY_PARTITION variable=reg_file dim=2 type=cyclic factor=2
 	ap_uint<8> pgml[MAX_PGM_SIZE*NB_FU*4];
-#	pragma HLS ARRAY_PARTITION variable=pgml dim=1 complete
+#	pragma HLS BIND_STORAGE variable=reg_file type=ram_t2p impl=bram
 
 	measure: {
 #pragma HLS PROTOCOL mode=fixed

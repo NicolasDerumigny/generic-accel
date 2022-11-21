@@ -7,7 +7,7 @@
     </downStreamTool>
     <synthesis askAgain="true"/>
     <config>
-        <config_export flow="syn" format="ip_catalog" rtl="verilog" vivado_clock="10"/>
+        <config_export flow="impl" format="ip_catalog" rtl="verilog" vivado_clock="10" vivado_phys_opt="all"/>
     </config>
     <UIConfigurations>
         <UIAutosynConf boardInfo="Zynq UltraScale+ ZCU104 Evaluation Board (xczu7ev-ffvc1156-2-e) " hideTrivialOp="true" isBasedOnBoard="true" isSolutionDirty="false" isStopAskAgain="true" showDetailDesignViewer="false">
@@ -40,7 +40,7 @@
             </RTLs>
         </UIAutoSimConf>
     </UIConfigurations>
-    <ExportDesign askAgain="true" evaluate="true" flow="false" flowChoice="syn" formatName="ip_catalog" rtl="vlog" rtlButton="true" rtlCombo="verilog">
+    <ExportDesign askAgain="true" evaluate="true" flow="true" flowChoice="impl" formatName="ip_catalog" rtl="vlog" rtlButton="true" rtlCombo="verilog">
         <Format formatName="ip_catalog" description="" vendor="" library="" ipname="generic_accel" version="1.0" display_name="" taxonomy=""/>
         <Format formatName="sysgen"/>
         <Format formatName="sysgen_ise"/>
@@ -59,7 +59,7 @@
         <value string="zcu104"/>
     </name>
     <project>
-        <value string="generic-accel"/>
+        <value string="accel-corr"/>
     </project>
     <flowTarget value="vivado"/>
     <targetInfo>
