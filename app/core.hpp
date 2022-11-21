@@ -4,14 +4,13 @@
 
 constexpr int N = 64;
 
-constexpr int NB_FU_GEN = 3;
+constexpr int NB_FU_GEN = 1;
 constexpr int NB_FU_MUL = 0;
-constexpr int NB_FU_ADD = 0;
-constexpr int NB_FU_DIVSQRT= 1;
+constexpr int NB_FU_ADD = 1;
+constexpr int NB_FU_DIVSQRT= 0;
 
 constexpr int NB_FU = NB_FU_GEN + NB_FU_ADD + NB_FU_MUL + NB_FU_DIVSQRT;
-//constexpr int REG_SIZ = 3*NB_FU; // 3 input per FU
-constexpr int REG_SIZ = 27; // Upper bound for correlation is 5 per pb + 2 cst
+constexpr int REG_SIZ = 25;
 constexpr int MAX_PGM_SIZE = 64; // to be large
 
 constexpr float CUTOFF = 0.1f;
@@ -47,17 +46,22 @@ enum op : uint8_t {
 	absm     = 17,
 	absv     = 18,
 	abss     = 19,
-	sqrtv    = 20,
-	sqrts    = 21,
+//	sqrtv    = 20,
+//	sqrts    = 21,
 	accsumcm = 22,  // Accumulation of matrix in a vector by column-wise
 				   // (line-indepedant) sum of all the elements
 	cutminv  = 23,  // Pointwise selection: `if coef < threshold 1 else coef`
-	divms    = 24,  // Pointwise division of matrices
-	divvs    = 25,  // Pointwise division of vectors
-	divcmv   = 26,  // Point-wise division with column-wise (line-independant) value
+//	divms    = 24,  // Pointwise division of matrices
+//	divvs    = 25,  // Pointwise division of vectors
+//	divcmv   = 26,  // Point-wise division with column-wise (line-independant) value
 	set0m    = 27,
 	setidm   = 28,
 	setd1    = 29,
+
+	multrmm     = 20,
+	multrmv     = 24,
+	addtrm      = 25,
+	multrsm     = 26,
 };
 
 using op_t = enum op;
