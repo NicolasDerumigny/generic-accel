@@ -59,7 +59,7 @@
         <value string="zcu104"/>
     </name>
     <project>
-        <value string="accel-hlac"/>
+        <value string="generic-accel"/>
     </project>
     <flowTarget value="vivado"/>
     <targetInfo>

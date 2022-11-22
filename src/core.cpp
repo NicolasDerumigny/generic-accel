@@ -134,9 +134,8 @@ static inline int lbg (macro_op_t ops[NB_FU]) {
 				break;
 			}
 
-			case op::multrmm:
-			case op::multrmv: {
-				ret = max(ret, (N*N + 2*N + 1)/2);
+			case op::multrmm: {
+				ret = max(ret, N*N*(N+1)/2);
 				break;
 			}
 
@@ -148,7 +147,7 @@ static inline int lbg (macro_op_t ops[NB_FU]) {
 			case op::subcmv:
 			case op::pmulm:
 			case op::oprodv:
-			case op::absm:
+			//case op::absm:
 			case op::accsumcm:
 			//case op::divms:
 			//case op::divcmv:
@@ -159,11 +158,18 @@ static inline int lbg (macro_op_t ops[NB_FU]) {
 				break;
 			}
 
+			case op::multrmv:
+			case op::multrsm:
+			case op::addtrm: {
+				ret = max(ret, N*(N+1)/2);
+				break;
+			}
+
 			case op::mulsv:
 			case op::addv:
 			case op::subv:
 			case op::pmulv:
-			case op::absv:
+			//case op::absv:
 			//case op::sqrtv:
 			case op::cutminv: {
 			//case op::divvs: {
@@ -173,8 +179,8 @@ static inline int lbg (macro_op_t ops[NB_FU]) {
 
 			case op::muls:
 			case op::adds:
-			case op::subs:
-			case op::abss: {
+			case op::subs: {
+			//case op::abss: {
 			//case op::sqrts: {
 				ret = max(ret, 1);
 				break;
@@ -279,7 +285,7 @@ static inline void agu (
 		}
 
 		case op::addtrm: {
-			if (i==0 and k>j) {
+			if (i==0 and k>=j) {
 				ld0_addr = access(j,k);
 				ld1_addr = access(j,k);
 				st_addr = access(j,k);
@@ -346,13 +352,13 @@ static inline void agu (
 			break;
 		}
 
-		case op::absm: {
+		/*case op::absm: {
 			if (i==0) {
 				ld0_addr = access(j,k);
 				st_addr = access(j,k);
 			}
 			break;
-		}
+		}*/
 
 		case op::set0m:
 		case op::setidm: {
@@ -362,7 +368,7 @@ static inline void agu (
 			break;
 		}
 
-		case op::absv:
+		//case op::absv:
 		//case op::sqrtv:
 		case op::cutminv: {
 			if (i==0 and j==0) {
@@ -373,13 +379,13 @@ static inline void agu (
 		}
 
 		//case op::sqrts:
-		case op::abss: {
+/*		case op::abss: {
 			if (i==0 and j==0 and k==0) {
 				ld0_addr = access(0,0);
 				st_addr = access(0,0);
 			}
 			break;
-		}
+		}*/
 
 		case op::setd1: {
 			if (i==0) {
@@ -554,7 +560,10 @@ static void fu_addmul (
 		case op::subs:
 		case op::mulmm:
 		case op::mulmv:
-		case op::accsumcm: {
+		case op::accsumcm:
+		case op::addtrm:
+		case op::multrmm:
+		case op::multrmv: {
 			st = add_op0 + add_op1;
 			break;
 		}
@@ -693,7 +702,8 @@ static void fu_add (
 		case op::subs:
 		case op::mulmm:
 		case op::mulmv:
-		case op::accsumcm: {
+		case op::accsumcm:
+		case op::addtrm: {
 			st = add_op0 + add_op1;
 			break;
 		}
@@ -875,7 +885,7 @@ inline bool is_triangular (macro_op_t ops[NB_FU]) {
 	for (i=0; i<NB_FU; i++) {
 #		pragma HLS unroll
 		op_t opcode = ops[i].opcode;
-		ret = ret and (opcode == op::multrmm or opcode == op::multrmv or opcode == op::multrsm or opcode == op::addtrm);
+		ret = ret and (opcode == op::multrmm or opcode == op::multrmv or opcode == op::multrsm or opcode == op::addtrm or opcode == op::noop);
 	}
 	return ret;
 }

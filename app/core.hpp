@@ -43,9 +43,9 @@ enum op : uint8_t {
 	pmulm    = 14,  // Point-wise mul: hadamard product
 	pmulv    = 15,  // Point-wise mul
 	oprodv   = 16,
-	absm     = 17,
-	absv     = 18,
-	abss     = 19,
+//	absm     = 17,
+//	absv     = 18,
+//	abss     = 19,
 //	sqrtv    = 20,
 //	sqrts    = 21,
 	accsumcm = 22,  // Accumulation of matrix in a vector by column-wise
