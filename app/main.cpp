@@ -25,33 +25,59 @@ alignas(uint32_t) uint8_t PRGM[MAX_PGM_SIZE][NB_FU][4];
 
 #define op0(o, rd, ra, rb)                                                               \
     do {                                                                                 \
-        PRGM[i / 2][0][0] = (uint8_t)op::o;                                              \
-        PRGM[i / 2][0][1] = rd;                                                          \
-        PRGM[i / 2][0][2] = ra;                                                          \
-        PRGM[i / 2][0][3] = rb;                                                          \
+        PRGM[i / NB_FU][0][0] = (uint8_t)op::o;                                          \
+        PRGM[i / NB_FU][0][1] = rd;                                                      \
+        PRGM[i / NB_FU][0][2] = ra;                                                      \
+        PRGM[i / NB_FU][0][3] = rb;                                                      \
         i++;                                                                             \
     } while (0)
 
 #define op1(o, rd, ra, rb)                                                               \
     do {                                                                                 \
-        PRGM[i / 2][1][0] = (uint8_t)op::o;                                              \
-        PRGM[i / 2][1][1] = rd;                                                          \
-        PRGM[i / 2][1][2] = ra;                                                          \
-        PRGM[i / 2][1][3] = rb;                                                          \
+        PRGM[i / NB_FU][1][0] = (uint8_t)op::o;                                          \
+        PRGM[i / NB_FU][1][1] = rd;                                                      \
+        PRGM[i / NB_FU][1][2] = ra;                                                      \
+        PRGM[i / NB_FU][1][3] = rb;                                                      \
+        i++;                                                                             \
+    } while (0)
+
+#define op2(o, rd, ra, rb)                                                               \
+    do {                                                                                 \
+        PRGM[i / NB_FU][2][0] = (uint8_t)op::o;                                          \
+        PRGM[i / NB_FU][2][1] = rd;                                                      \
+        PRGM[i / NB_FU][2][2] = ra;                                                      \
+        PRGM[i / NB_FU][2][3] = rb;                                                      \
+        i++;                                                                             \
+    } while (0)
+
+#define op3(o, rd, ra, rb)                                                               \
+    do {                                                                                 \
+        PRGM[i / NB_FU][3][0] = (uint8_t)op::o;                                          \
+        PRGM[i / NB_FU][3][1] = rd;                                                      \
+        PRGM[i / NB_FU][3][2] = ra;                                                      \
+        PRGM[i / NB_FU][3][3] = rb;                                                      \
         i++;                                                                             \
     } while (0)
 
 #define halt()                                                                           \
     do {                                                                                 \
-        PRGM[i / 2][0][0] = (uint8_t)op::noop;                                           \
-        PRGM[i / 2][0][1] = 0;                                                           \
-        PRGM[i / 2][0][2] = 0;                                                           \
-        PRGM[i / 2][0][3] = 0;                                                           \
-        PRGM[i / 2][1][0] = (uint8_t)op::noop;                                           \
-        PRGM[i / 2][1][1] = 0;                                                           \
-        PRGM[i / 2][1][2] = 0;                                                           \
-        PRGM[i / 2][1][3] = 0;                                                           \
-        i += 2;                                                                          \
+        PRGM[i / NB_FU][0][0] = (uint8_t)op::noop;                                       \
+        PRGM[i / NB_FU][0][1] = 0;                                                       \
+        PRGM[i / NB_FU][0][2] = 0;                                                       \
+        PRGM[i / NB_FU][0][3] = 0;                                                       \
+        PRGM[i / NB_FU][1][0] = (uint8_t)op::noop;                                       \
+        PRGM[i / NB_FU][1][1] = 0;                                                       \
+        PRGM[i / NB_FU][1][2] = 0;                                                       \
+        PRGM[i / NB_FU][1][3] = 0;                                                       \
+        PRGM[i / NB_FU][2][0] = (uint8_t)op::noop;                                       \
+        PRGM[i / NB_FU][2][1] = 0;                                                       \
+        PRGM[i / NB_FU][2][2] = 0;                                                       \
+        PRGM[i / NB_FU][2][3] = 0;                                                       \
+        PRGM[i / NB_FU][3][0] = (uint8_t)op::noop;                                       \
+        PRGM[i / NB_FU][3][1] = 0;                                                       \
+        PRGM[i / NB_FU][3][2] = 0;                                                       \
+        PRGM[i / NB_FU][3][3] = 0;                                                       \
+        i += NB_FU;                                                                      \
     } while (0)
 
 void init_prgm() {
