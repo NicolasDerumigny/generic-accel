@@ -11,12 +11,12 @@ static inline int access (int i, int j) {
 	return i*N + j;
 }
 
-static inline half cast_half(DMA_TYPE val) {
+static inline double cast_double(DMA_TYPE val) {
 # 	pragma HLS inline
-	return *(half*) &val;
+	return *(double*) &val;
 }
 
-static inline DMA_TYPE cast_dma_type(half val0, half val1, half val2, half val3) {
+static inline DMA_TYPE cast_dma_type(double val0, double val1, double val2, double val3) {
 # 	pragma HLS inline
 	DMA_TYPE cast0 = *(ap_uint<16>*) &val0;
 	DMA_TYPE cast1 = *(ap_uint<16>*) &val1;
@@ -26,7 +26,7 @@ static inline DMA_TYPE cast_dma_type(half val0, half val1, half val2, half val3)
 	return (cast0 | (cast1 << 16) | (cast2 << 32) | (cast3 << 48));
 }
 
-static inline void recv_data_burst (DMA_TYPE data_in[DMA_SIZE], half reg_file[REG_SIZ][N*N]) {
+static inline void recv_data_burst (DMA_TYPE data_in[DMA_SIZE], double reg_file[REG_SIZ][N*N]) {
 #	pragma HLS inline off
 	int reg_id, i,j, idx;
 
@@ -42,11 +42,8 @@ static inline void recv_data_burst (DMA_TYPE data_in[DMA_SIZE], half reg_file[RE
 #		pragma HLS dependence dependent=false type=intra variable=reg_file
 		const DMA_TYPE val = data_in[idx];
 		int addr = access(i,j);
-		half *write_dst = reg_file[reg_id] + addr;
-		write_dst[0] = cast_half((val >> 0) & 0xffff);
-		write_dst[1] = cast_half((val >> 16) & 0xffff);
-		write_dst[2] = cast_half((val >> 32) & 0xffff);
-		write_dst[3] = cast_half((val >> 48) & 0xffff);
+		double *write_dst = reg_file[reg_id] + addr;
+		write_dst[0] = cast_double(val);
 
 		/*hls::print("INCOMING REC:\n");
 		hls::print("Rec: %f\n",
@@ -58,7 +55,7 @@ static inline void recv_data_burst (DMA_TYPE data_in[DMA_SIZE], half reg_file[RE
 		hls::print("Rec: %f\n",
 				(float) reg_file[reg_id][addr + 3] );
 				*/
-		j+=4;
+		j+=1;
 		if (j==N) {
 			j=0;
 			i++;
@@ -70,7 +67,7 @@ static inline void recv_data_burst (DMA_TYPE data_in[DMA_SIZE], half reg_file[RE
 	}
 }
 
-static inline void send_data_burst (DMA_TYPE data_out[DMA_SIZE], half reg_file[REG_SIZ][N*N]) {
+static inline void send_data_burst (DMA_TYPE data_out[DMA_SIZE], double reg_file[REG_SIZ][N*N]) {
 #	pragma HLS inline off
 	int reg_id, i,j, idx;
 
@@ -92,14 +89,8 @@ static inline void send_data_burst (DMA_TYPE data_out[DMA_SIZE], half reg_file[R
 				(float) reg_file[reg_id][addr + 2] );
 		hls::print("Rec: %f\n",
 				(float) reg_file[reg_id][addr + 3] );*/
-		const DMA_TYPE val = cast_dma_type(
-				reg_file[reg_id][addr+0],
-				reg_file[reg_id][addr+1],
-				reg_file[reg_id][addr+2],
-				reg_file[reg_id][addr+3]
-			);
-		data_out[idx] = val;
-		j+=4;
+		data_out[idx] = *(uint64_t*) (reg_file[reg_id]+addr);
+		j++;
 		if (j==N) {
 			j=0;
 			i++;
@@ -395,30 +386,30 @@ static inline void agu (
 	}
 }
 
-inline half do_minus(half value) {
-	ap_uint<16> minus_in = *(ap_uint<16>*) &value;
-	minus_in = ( ((~minus_in) & 0x8000) | (minus_in & 0x7FFF));
-	return *(half*) &minus_in;
+inline double do_minus(double value) {
+	ap_uint<64> minus_in = *(ap_uint<64>*) &value;
+	minus_in = ( ((~minus_in) & 0x8000000000000000) | (minus_in & 0x7FFF000000000000));
+	return *(double*) &minus_in;
 }
 
 
-inline half do_abs(half value) {
-	ap_uint<16> abs = *(ap_uint<16>*) &value;
-	abs = abs & 0x7FFF;
-	return *(half*) &abs;
+inline double do_abs(double value) {
+	ap_uint<64> abs = *(ap_uint<64>*) &value;
+	abs = abs & 0x7FFF000000000000;
+	return *(double*) &abs;
 }
 
 static void fu_addmul (
 		op_t op,
-		half &st, half ld0, half ld1,
+		double &st, double ld0, double ld1,
 		int i, int j, int k) {
 #	pragma HLS inline off
 # 	pragma HLS pipeline II=1
 # 	pragma HLS allocation operation instances=hadd limit=1
 # 	pragma HLS allocation operation instances=hmul limit=1
-	half ld_st = st;
-	half add_op0, add_op1;
-	half mul_res;
+	double ld_st = st;
+	double add_op0, add_op1;
+	double mul_res;
 
 	switch (op) {
 		case op::mulmm:
@@ -513,7 +504,7 @@ static void fu_addmul (
 		}
 
 		case op::cutminv: {
-			st = (ld0<=CUTOFF)?(half)1.0:ld0;
+			st = (ld0<=CUTOFF)?(double)1.0:ld0;
 			break;
 		}
 
@@ -536,7 +527,7 @@ static void fu_addmul (
 		}
 
 		case op::setd1:{
-			st = (j==k)?(half)1.0f:ld0;
+			st = (j==k)?(double)1.0f:ld0;
 			break;
 		}
 
@@ -567,14 +558,14 @@ static void fu_addmul (
 
 static void fu_mul (
 		op_t op,
-		half &st, half ld0, half ld1,
+		double &st, double ld0, double ld1,
 		int i, int j, int k) {
 #	pragma HLS inline off
 # 	pragma HLS pipeline II=1
 # 	pragma HLS allocation operation instances=hmul limit=1
-	half ld_st = st;
-	half add_op0, add_op1;
-	half mul_res;
+	double ld_st = st;
+	double add_op0, add_op1;
+	double mul_res;
 
 	switch (op) {
 		case op::mulsm:
@@ -616,13 +607,13 @@ static void fu_mul (
 
 static void fu_add (
 		op_t op,
-		half &st, half ld0, half ld1,
+		double &st, double ld0, double ld1,
 		int i, int j, int k) {
 #	pragma HLS inline off
 # 	pragma HLS pipeline II=1
 # 	pragma HLS allocation operation instances=hadd limit=1
-	half ld_st = st;
-	half add_op0, add_op1;
+	double ld_st = st;
+	double add_op0, add_op1;
 
 	switch (op) {
 		default: {
@@ -679,7 +670,7 @@ static void fu_add (
 		}
 
 		case op::setd1:{
-			st = (j==k)?(half)1.0f:ld0;
+			st = (j==k)?(double)1.0f:ld0;
 			break;
 		}
 	}
@@ -706,9 +697,9 @@ static void fu_add (
 
 /*static inline void read (
 		macro_op_t ops,
-		half reg_file[REG_SIZ][N*N],
+		double reg_file[REG_SIZ][N*N],
 		int ld0_addr, int ld1_addr, int st_addr,
-		half &ld0, half &ld1, half &st) {
+		double &ld0, double &ld1, double &st) {
 #	pragma HLS inline
 	ld0 = reg_file[ops.r0][ld0_addr];
 	ld1 = reg_file[ops.r1][ld1_addr];
@@ -717,11 +708,11 @@ static void fu_add (
 
 /*static inline void multiple_read (
 		macro_op_t ops[NB_FU],
-		half reg_file[REG_SIZ][N*N],
+		double reg_file[REG_SIZ][N*N],
 		int ld0_addr0, int ld1_addr0, int st_addr0,
-		half &ld0_0, half &ld1_0, half &st0,
+		double &ld0_0, double &ld1_0, double &st0,
 		int ld0_addr1, int ld1_addr1, int st_addr1,
-		half &ld0_1, half &ld1_1, half &st1) {
+		double &ld0_1, double &ld1_1, double &st1) {
 #	pragma HLS inline
 	int i;
 	for (i=0; i<REG_SIZ; i++) {
@@ -740,7 +731,7 @@ static void fu_add (
 		if (ops[1].r_dst == i)
 			offset = st_addr1;
 		if (offset>=0) {
-			half value = reg_file[i][offset];
+			double value = reg_file[i][offset];
 			if (ops[0].r0 == i)
 				ld0_0 = value;
 			if (ops[0].r1 == i)
@@ -759,9 +750,9 @@ static void fu_add (
 
 static inline void multiple_read_tbl (
 		macro_op_t ops[NB_FU],
-		half reg_file[REG_SIZ][N*N],
+		double reg_file[REG_SIZ][N*N],
 		int ld0_addr[NB_FU], int ld1_addr[NB_FU], int st_addr[NB_FU],
-		half ld0[NB_FU], half ld1[NB_FU], half st[NB_FU]) {
+		double ld0[NB_FU], double ld1[NB_FU], double st[NB_FU]) {
 #	pragma HLS inline
 	int i,j;
 	for (i=0; i<REG_SIZ; i++) {
@@ -778,7 +769,7 @@ static inline void multiple_read_tbl (
 				offset = st_addr[j];
 		}
 		if (offset>=0) {
-			half value = reg_file[i][offset];
+			double value = reg_file[i][offset];
 			for (j=0; j<NB_FU; j++) {
 #				pragma HLS unroll
 				if (ops[j].r0 == i)
@@ -794,20 +785,20 @@ static inline void multiple_read_tbl (
 
 /*static inline void write (
 		macro_op_t ops,
-		half reg_file[REG_SIZ][N*N],
+		double reg_file[REG_SIZ][N*N],
 		int st_addr,
-		half st) {
+		double st) {
 #	pragma HLS inline
 	reg_file[ops.r_dst][st_addr] = st;
 }*/
 
 /*static inline void multiple_write (
 		macro_op_t ops[NB_FU],
-		half reg_file[REG_SIZ][N*N],
+		double reg_file[REG_SIZ][N*N],
 		int st_addr0,
-		half st0,
+		double st0,
 		int st_addr1,
-		half st1) {
+		double st1) {
 #	pragma HLS inline
 	ap_uint<8> match = ops[1].r_dst << 4 | ops[0].r_dst;
 	switch (match) {
@@ -825,17 +816,17 @@ static inline void multiple_read_tbl (
 
 /*static inline void multiple_write (
 		macro_op_t ops[NB_FU],
-		half reg_file[REG_SIZ][N*N],
+		double reg_file[REG_SIZ][N*N],
 		int st_addr0,
-		half st0,
+		double st0,
 		int st_addr1,
-		half st1) {
+		double st1) {
 #	pragma HLS inline
 	int i;
 	for (i=0; i<REG_SIZ; i++) {
 #		pragma HLS unroll
 		int offset = -1;
-		half value = 0;
+		double value = 0;
 		if (ops[0].r_dst == i) {
 			offset = st_addr0;
 			value = st0;
@@ -850,9 +841,9 @@ static inline void multiple_read_tbl (
 
 static inline void multiple_write_tbl (
 		macro_op_t ops[NB_FU],
-		half reg_file[REG_SIZ][N*N],
+		double reg_file[REG_SIZ][N*N],
 		int st_addr[NB_FU],
-		half st[NB_FU]) {
+		double st[NB_FU]) {
 #	pragma HLS inline
 	int i, j;
 	for (i=0; i<REG_SIZ; i++) {
@@ -882,7 +873,7 @@ inline bool is_triangular (macro_op_t ops[NB_FU]) {
 
 int core(
 		macro_op_t ops[NB_FU],
-		half reg_file[REG_SIZ][N*N]) {
+		double reg_file[REG_SIZ][N*N]) {
 # 	pragma HLS inline
 	// To avoid read/write conflicts (loop carried dependency by read/writes
 	// to the same *local* buffer), we manually implement a rolling buffer
@@ -893,7 +884,7 @@ int core(
 #	pragma HLS ARRAY_PARTITION variable=ld0_addr dim=0 complete
 #	pragma HLS ARRAY_PARTITION variable=ld1_addr dim=0 complete
 #	pragma HLS ARRAY_PARTITION variable=st_addr dim=0 complete
-	half ld0[NB_FU], ld1[NB_FU], st_g[LAT][NB_FU];
+	double ld0[NB_FU], ld1[NB_FU], st_g[LAT][NB_FU];
 #	pragma HLS ARRAY_PARTITION variable=ld0 dim=0 complete
 #	pragma HLS ARRAY_PARTITION variable=ld1 dim=0 complete
 #	pragma HLS ARRAY_PARTITION variable=st_g dim=0 complete
@@ -909,8 +900,8 @@ int core(
 
 		/*int ld0_addr0, ld1_addr0, st_addr0;
 		int ld0_addr1, ld1_addr1, st_addr1;
-		half ld0_0=0, ld1_0=0, st0=0;
-		half ld0_1=0, ld1_1=0, st1=0;*/
+		double ld0_0=0, ld1_0=0, st0=0;
+		double ld0_1=0, ld1_1=0, st1=0;*/
 
 		//op opcode0 = ops[0].opcode;
 		//op opcode1 = ops[1].opcode;
@@ -994,7 +985,7 @@ int core(
 }
 
 void compute(ap_uint<8> pgml[MAX_PGM_SIZE*NB_FU*4],
-		half reg_file[REG_SIZ][N*N]) {
+		double reg_file[REG_SIZ][N*N]) {
 #	pragma HLS inline off
 	for (int pc=0; pc<MAX_PGM_SIZE; pc++) {
 #		pragma HLS loop_flatten off
@@ -1038,7 +1029,7 @@ void generic_accel(
 #	pragma HLS INTERFACE mode=m_axi bundle=data port=data_in offset=slave
 #	pragma HLS INTERFACE mode=m_axi bundle=data port=data_out offset=slave
 
-	half reg_file[REG_SIZ][N*N];
+	double reg_file[REG_SIZ][N*N];
 #	pragma HLS BIND_STORAGE variable=reg_file type=ram_t2p impl=bram
 #	pragma HLS ARRAY_PARTITION variable=reg_file dim=1 complete
 #	pragma HLS ARRAY_PARTITION variable=reg_file dim=2 type=cyclic factor=2

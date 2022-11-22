@@ -40,7 +40,7 @@
             </RTLs>
         </UIAutoSimConf>
     </UIConfigurations>
-    <ExportDesign askAgain="true" evaluate="true" flow="false" flowChoice="impl" formatName="ip_catalog" rtl="vlog" rtlButton="true" rtlCombo="verilog">
+    <ExportDesign askAgain="true" evaluate="true" flow="true" flowChoice="impl" formatName="ip_catalog" rtl="vlog" rtlButton="true" rtlCombo="verilog">
         <Format formatName="ip_catalog" description="" vendor="" library="" ipname="generic_accel" version="1.0" display_name="" taxonomy=""/>
         <Format formatName="sysgen"/>
         <Format formatName="sysgen_ise"/>
