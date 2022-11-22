@@ -9,6 +9,7 @@ def usage():
 
 
 def get_reg_value(reg: str):
+    reg = reg.replace(" ", "")
     if reg.startswith("r"):
         return f"r[{reg.replace(' ', '')[1:]}]"
     else:
