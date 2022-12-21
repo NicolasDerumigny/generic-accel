@@ -4,10 +4,10 @@
 
 constexpr int N = 64;
 
-constexpr int NB_FU_GEN = 3;
+constexpr int NB_FU_GEN = 1;
 constexpr int NB_FU_MUL = 0;
 constexpr int NB_FU_ADD = 0;
-constexpr int NB_FU_DIVSQRT= 1;
+constexpr int NB_FU_DIVSQRT= 0;
 
 constexpr int NB_FU = NB_FU_GEN + NB_FU_ADD + NB_FU_MUL + NB_FU_DIVSQRT;
 //constexpr int REG_SIZ = 3*NB_FU; // 3 input per FU

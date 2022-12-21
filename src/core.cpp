@@ -698,58 +698,100 @@ static void fu_add (
 	}
 }
 
-/*static inline void read (
-		macro_op_t ops,
-		half reg_file[REG_SIZ][N*N],
-		int ld0_addr, int ld1_addr, int st_addr,
-		half &ld0, half &ld1, half &st) {
-#	pragma HLS inline
-	ld0 = reg_file[ops.r0][ld0_addr];
-	ld1 = reg_file[ops.r1][ld1_addr];
-	st  = reg_file[ops.r_dst][st_addr];
-}*/
+static void fu_addmul_axis (
+		op_t op,
+		half st, half ld0, half ld1,
+		int i, int j, int k,
+		half &a, half &b, half &c) {
+#	pragma HLS inline off
+# 	pragma HLS pipeline II=1
+	a = 0;
+	b = 1;
+	c = 0;
 
-/*static inline void multiple_read (
-		macro_op_t ops[NB_FU],
-		half reg_file[REG_SIZ][N*N],
-		int ld0_addr0, int ld1_addr0, int st_addr0,
-		half &ld0_0, half &ld1_0, half &st0,
-		int ld0_addr1, int ld1_addr1, int st_addr1,
-		half &ld0_1, half &ld1_1, half &st1) {
-#	pragma HLS inline
-	int i;
-	for (i=0; i<REG_SIZ; i++) {
-#		pragma HLS unroll
-		int offset = -1;
-		if (ops[0].r0 == i)
-			offset = ld0_addr0;
-		if (ops[0].r1 == i)
-			offset = ld1_addr0;
-		if (ops[0].r_dst == i)
-			offset = st_addr0;
-		if (ops[1].r0 == i)
-			offset = ld0_addr1;
-		if (ops[1].r1 == i)
-			offset = ld1_addr1;
-		if (ops[1].r_dst == i)
-			offset = st_addr1;
-		if (offset>=0) {
-			half value = reg_file[i][offset];
-			if (ops[0].r0 == i)
-				ld0_0 = value;
-			if (ops[0].r1 == i)
-				ld1_0 = value;
-			if (ops[0].r_dst == i)
-				st0 = value;
-			if (ops[1].r0 == i)
-				ld0_1 = value;
-			if (ops[1].r1 == i)
-				ld1_1 = value;
-			if (ops[1].r_dst == i)
-				st1 = value;
+	switch (op) {
+		default: {
+			break;
+		}
+
+		case op::mulmm:
+		case op::mulmv: {
+			a = ld0;
+			b = ld1;
+			if (j==0)
+				c = 0;
+			else
+				c = st;
+			break;
+		}
+
+		case op::trm: {
+			a = ld0;
+			break;
+		}
+
+		case op::addm:
+		case op::addv:
+		case op::adds: {
+			a = ld0;
+			c = ld1;
+			break;
+		}
+
+		case op::mulsm:
+		case op::mulsv:
+		case op::muls:
+		case op::pmulm:
+		case op::pmulv:
+		case op::oprodv: {
+			a = ld0;
+			b = ld1;
+			break;
+		}
+
+		case op::subm:
+		case op::subv:
+		case op::subs:
+		case op::subcmv: {
+			a = ld0;
+			c = do_minus(ld1);
+			break;
+		}
+
+		case op::accsumcm: {
+			if (j==0)
+				a = 0;
+			else
+				a = st;
+			c = ld0;
+			break;
+		}
+
+		case op::cutminv: {
+			a = (ld0<=CUTOFF)?(half)1.0:ld0;
+			break;
+		}
+
+		case op::set0m: {
+			a = 0;
+			break;
+		}
+
+		case op::setidm: {
+			a = (i==j);
+			break;
+		}
+
+		case op::setd1:{
+			a = (j==k)?(half)1.0f:ld0;
+			break;
+		}
+
+		case op::noop: {
+			break;
 		}
 	}
-}*/
+}
 
 static inline void multiple_read_tbl (
 		macro_op_t ops[NB_FU],
@@ -786,62 +828,6 @@ static inline void multiple_read_tbl (
 	}
 }
 
-/*static inline void write (
-		macro_op_t ops,
-		half reg_file[REG_SIZ][N*N],
-		int st_addr,
-		half st) {
-#	pragma HLS inline
-	reg_file[ops.r_dst][st_addr] = st;
-}*/
-
-/*static inline void multiple_write (
-		macro_op_t ops[NB_FU],
-		half reg_file[REG_SIZ][N*N],
-		int st_addr0,
-		half st0,
-		int st_addr1,
-		half st1) {
-#	pragma HLS inline
-	ap_uint<8> match = ops[1].r_dst << 4 | ops[0].r_dst;
-	switch (match) {
-		default:
-		break;
-
-#		define dual_store(match, reg1, reg0) \
-		case match:\
-			if (st_addr1 >= 0) reg_file[reg1][st_addr1] = st1;\
-			if (st_addr0 >= 0) reg_file[reg0][st_addr0] = st0;\
-			break;
-#		include "store_unit.gen"
-	}
-}*/
-
-/*static inline void multiple_write (
-		macro_op_t ops[NB_FU],
-		half reg_file[REG_SIZ][N*N],
-		int st_addr0,
-		half st0,
-		int st_addr1,
-		half st1) {
-#	pragma HLS inline
-	int i;
-	for (i=0; i<REG_SIZ; i++) {
-#		pragma HLS unroll
-		int offset = -1;
-		half value = 0;
-		if (ops[0].r_dst == i) {
-			offset = st_addr0;
-			value = st0;
-		} else if (ops[1].r_dst == i) {
-			offset = st_addr1;
-			value = st1;
-		}
-		if (offset>=0)
-			reg_file[i][offset] = value;
-	}
-}*/
-
 static inline void multiple_write_tbl (
 		macro_op_t ops[NB_FU],
 		half reg_file[REG_SIZ][N*N],
@@ -865,95 +851,67 @@ static inline void multiple_write_tbl (
 
 int core(
 		macro_op_t ops[NB_FU],
-		half reg_file[REG_SIZ][N*N]) {
+		half reg_file[REG_SIZ][N*N],
+		gu_t &cu0_a,
+		gu_t &cu0_b,
+		gu_t &cu0_c,
+		gu_t &cu0_res) {
 # 	pragma HLS inline
 	// To avoid read/write conflicts (loop carried dependency by read/writes
 	// to the same *local* buffer), we manually implement a rolling buffer
 	// on temporary i/o vars
-	constexpr int LAT=3;
+	constexpr int LAT=14;
 
-	int ld0_addr[NB_FU], ld1_addr[NB_FU], st_addr[NB_FU];
+	int ld0_addr[NB_FU], ld1_addr[NB_FU], st_addr[LAT][NB_FU];
 #	pragma HLS ARRAY_PARTITION variable=ld0_addr dim=0 complete
 #	pragma HLS ARRAY_PARTITION variable=ld1_addr dim=0 complete
 #	pragma HLS ARRAY_PARTITION variable=st_addr dim=0 complete
-	half ld0[NB_FU], ld1[NB_FU], st_g[LAT][NB_FU];
+	half ld0[NB_FU], ld1[NB_FU], st[NB_FU];
 #	pragma HLS ARRAY_PARTITION variable=ld0 dim=0 complete
 #	pragma HLS ARRAY_PARTITION variable=ld1 dim=0 complete
-#	pragma HLS ARRAY_PARTITION variable=st_g dim=0 complete
+#	pragma HLS ARRAY_PARTITION variable=st dim=0 complete
 
-	int idx;
+	int idx, idx_st_addr=0;
 	int i=0, j=0, k=0;
 	const int bound = lbg(ops);
-	for (idx=0; idx<bound; idx++) {
+	for (idx=0; idx<bound+LAT; idx++) {
 #		pragma HLS loop_flatten off
 #		pragma HLS dependence dependent=false type=inter variable=reg_file
 #		pragma HLS pipeline II=1
 
-		/*int ld0_addr0, ld1_addr0, st_addr0;
-		int ld0_addr1, ld1_addr1, st_addr1;
-		half ld0_0=0, ld1_0=0, st0=0;
-		half ld0_1=0, ld1_1=0, st1=0;*/
-
-		//op opcode0 = ops[0].opcode;
-		//op opcode1 = ops[1].opcode;
-		//agu (opcode0, i, j, k, ld0_addr0, ld1_addr0, st_addr0);
-		//agu (opcode1, i, j, k, ld0_addr1, ld1_addr1, st_addr1);
-
-		int id;
-		for (id=0; id<NB_FU; id++) {
-#			pragma HLS unroll
-			agu(ops[id].opcode, i, j, k, ld0_addr[id], ld1_addr[id], st_addr[id]);
+		if (not cu0_res.empty()) {
+			half res[NB_FU];
+			cu0_res >> res[0];
+			multiple_write_tbl(ops, reg_file,
+					st_addr[idx_st_addr], res);
 		}
 
-		/*read (ops[0], reg_file, ld0_addr0, ld1_addr0, st_addr0, ld0_0, ld1_0, st0);
-		read (ops[1], reg_file, ld0_addr1, ld1_addr1, st_addr1, ld0_1, ld1_1, st1);*/
-		/*multiple_read(ops, reg_file,
-				ld0_addr0, ld1_addr0, st_addr0, ld0_0, ld1_0, st0,
-				ld0_addr1, ld1_addr1, st_addr1, ld0_1, ld1_1, st1);*/
-		/*multiple_read(ops, reg_file,
-			ld0_addr[0], ld1_addr[0], st_addr[0], ld0[0], ld1[0], st[0],
-			ld0_addr[1], ld1_addr[1], st_addr[1], ld0[1], ld1[1], st[1]);*/
-
-		multiple_read_tbl(ops, reg_file,
-			ld0_addr, ld1_addr, st_addr, ld0, ld1, st_g[0]);
-
-
-		for (id=0; id<NB_FU; id++) {
-#			pragma HLS unroll
-			st_g[1][id] = st_g[0][id];
-			if (id<NB_FU_GEN) {
-				fu_addmul(ops[id].opcode,
-					st_g[1][id], ld0[id], ld1[id],
-					i, j, k);
-			} else if (id<(NB_FU_GEN + NB_FU_MUL)) {
-				fu_mul(ops[id].opcode,
-					st_g[1][id], ld0[id], ld1[id],
-					i, j, k);
-			} else if (id<(NB_FU_GEN + NB_FU_MUL + NB_FU_DIVSQRT)) {
-				fu_divsqrt(ops[id].opcode,
-					st_g[1][id], ld0[id], ld1[id],
-					i, j, k);
-			} else {
-				fu_add(ops[id].opcode,
-					st_g[1][id], ld0[id], ld1[id],
-					i, j, k);
+		if (idx < bound) {
+			int id;
+			for (id=0; id<NB_FU; id++) {
+	#			pragma HLS unroll
+				agu(ops[id].opcode, i, j, k, ld0_addr[id], ld1_addr[id], st_addr[idx_st_addr][id]);
 			}
-			st_g[2][id] = st_g[1][id];
+
+			multiple_read_tbl(ops, reg_file,
+				ld0_addr, ld1_addr, st_addr[idx_st_addr], ld0, ld1, st);
+
+			half a, b, c;
+			fu_addmul_axis(ops[0].opcode,
+				st[0], ld0[0], ld1[0],
+				i, j, k,
+				a, b, c);
+
+			cu0_a << a;
+			cu0_b << b;
+			cu0_c << c;
 		}
-
-		/*write (ops[0], reg_file, st_addr0, st0);
-		write (ops[1], reg_file, st_addr1, st1);*/
-		/*multiple_write(ops, reg_file,
-				st_addr0, st0,
-				st_addr1, st1);*/
-		/*multiple_write(ops, reg_file,
-			st_addr[0], st[0],
-			st_addr[1], st[1]);*/
-
-		multiple_write_tbl(ops, reg_file,
-			st_addr, st_g[2]);
 
 		k++;
+		idx_st_addr++;
+		if (idx_st_addr == LAT) {
+			idx_st_addr = 0;
+		}
 		if (k==N) {
 			k = 0;
 			j++;
@@ -968,7 +926,11 @@ int core(
 }
 
 void compute(ap_uint<8> pgml[MAX_PGM_SIZE*NB_FU*4],
-		half reg_file[REG_SIZ][N*N]) {
+		half reg_file[REG_SIZ][N*N],
+		gu_t &cu0_a,
+		gu_t &cu0_b,
+		gu_t &cu0_c,
+		gu_t &cu0_res) {
 #	pragma HLS inline off
 	for (int pc=0; pc<MAX_PGM_SIZE; pc++) {
 #		pragma HLS loop_flatten off
@@ -987,7 +949,11 @@ void compute(ap_uint<8> pgml[MAX_PGM_SIZE*NB_FU*4],
 
 		int nb_it = core(
 			m_ins,
-			reg_file
+			reg_file,
+			cu0_a,
+			cu0_b,
+			cu0_c,
+			cu0_res
 		);
 
 		if (nb_it == 0) // Nothing was done: only NOPs
@@ -1001,7 +967,11 @@ void generic_accel(
 		volatile ap_uint<64> *counter,
 		ap_uint<64> *start_time,
 		ap_uint<64> *end_time,
-		ap_uint<8> pgm[MAX_PGM_SIZE*NB_FU*4]) {
+		ap_uint<8> pgm[MAX_PGM_SIZE*NB_FU*4],
+		gu_t &cu0_a,
+		gu_t &cu0_b,
+		gu_t &cu0_c,
+		gu_t &cu0_res) {
 #	pragma HLS INTERFACE mode=s_axilite port=return
 #	pragma HLS INTERFACE mode=s_axilite port=start_time
 #	pragma HLS INTERFACE mode=ap_none port=start_time register
@@ -1011,6 +981,10 @@ void generic_accel(
 #	pragma HLS INTERFACE mode=s_axilite port=pgm
 #	pragma HLS INTERFACE mode=m_axi bundle=data port=data_in offset=slave
 #	pragma HLS INTERFACE mode=m_axi bundle=data port=data_out offset=slave
+#	pragma HLS INTERFACE mode=axis port=cu0_a
+#	pragma HLS INTERFACE mode=axis port=cu0_b
+#	pragma HLS INTERFACE mode=axis port=cu0_c
+#	pragma HLS INTERFACE mode=axis port=cu0_res
 
 	half reg_file[REG_SIZ][N*N];
 #	pragma HLS BIND_STORAGE variable=reg_file type=ram_t2p impl=bram
@@ -1026,7 +1000,7 @@ void generic_accel(
 		ap_wait();
 		*start_time = *counter;
 		ap_wait();
-		compute (pgml, reg_file);
+		compute (pgml, reg_file, cu0_a, cu0_b, cu0_c, cu0_res);
 		ap_wait();
 		*end_time = *counter;
 		ap_wait();

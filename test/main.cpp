@@ -16,7 +16,11 @@ void generic_accel(
 		volatile ap_uint<64> *counter,
 		ap_uint<64> *start_time,
 		ap_uint<64> *end_time,
-		ap_uint<8> pgm[MAX_PGM_SIZE*NB_FU*4]);
+		ap_uint<8> pgm[MAX_PGM_SIZE*NB_FU*4],
+		gu_t &cu0_a,
+		gu_t &cu0_b,
+		gu_t &cu0_c,
+		gu_t &cu0_res);
 
 #define init() int i=0;\
 		uint8_t r[512];\
@@ -80,14 +84,14 @@ void init_prgm_simple(ap_uint<8> PRGM[MAX_PGM_SIZE][NB_FU][4]) {
 	init();
 
 	op0(addm, r[3], r[4], r[5]);
-	op1(subm, r[0], r[1], r[2]);
+	/*op1(subm, r[0], r[1], r[2]);
 	op2(noop, null, null, null);
 	op3(noop, null, null, null);
 
 	op0(mulmm, r[1], r[3], r[0]);
 	op1(noop, null, null, null);
 	op2(noop, null, null, null);
-	op3(noop, null, null, null);
+	op3(noop, null, null, null);*/
 
 	halt();
 }
@@ -302,13 +306,18 @@ int main() {
 
 	ap_uint<64> counter = 1;
 	ap_uint<64> exec_time = 42;
+	gu_t stream_a, stream_b, stream_c, stream_res;
 	generic_accel(
 			(DMA_TYPE*) reg_file,
 			(DMA_TYPE*) reg_file_out,
 			&counter,
 			&exec_time,
 			&exec_time,
-			(ap_uint<8>*) PRGM);
+			(ap_uint<8>*) PRGM,
+			stream_a,
+			stream_b,
+			stream_c,
+			stream_res);
 
 	kernel_correlation (data, corr);
 
