@@ -1,26 +1,11 @@
 #include <bitset>
 #include <cstdint>
+#include <cstdio>
 #include <iostream>
 #include <chrono>
 
 #include "core.hpp"
-
-#include <cstdio>
-
-#include "dma.hpp"
 #include "hls_math.h"
-
-void generic_accel(
-		DMA_TYPE data_in[DMA_SIZE],
-		DMA_TYPE data_out[DMA_SIZE],
-		volatile ap_uint<64> *counter,
-		ap_uint<64> *start_time,
-		ap_uint<64> *end_time,
-		ap_uint<8> pgm[MAX_PGM_SIZE*NB_FU*4],
-		gu_t &cu0_a,
-		gu_t &cu0_b,
-		gu_t &cu0_c,
-		gu_t &cu0_res);
 
 #define init() int i=0;\
 		uint8_t r[512];\

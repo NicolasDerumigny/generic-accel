@@ -7,7 +7,7 @@
 #include "lib/cma.hpp"
 #include "math.h"
 
-#include "core.hpp"
+#include "config.hpp"
 #include "drivers/xgeneric_accel.h"
 
 using half = __fp16;
