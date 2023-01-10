@@ -1,5 +1,4 @@
 #include "ap_utils.h"
-#include "hls_print.h"
 
 #include "core.hpp"
 #include "dma.hpp"
@@ -7,6 +6,8 @@
 #include "agu.hpp"
 #include "lbg.hpp"
 #include "rw.hpp"
+
+//#include "hls_print.h"
 
 static inline void increment_idx(int &idx, const int max_val) {
 #	pragma HLS inline
@@ -36,9 +37,9 @@ int core(
 	// To avoid read/write conflicts (loop carried dependency by read/writes
 	// to the same *local* buffer), we manually implement a rolling buffer
 	// on temporary i/o vars
-	constexpr int LAT=9;
+	constexpr int LAT=8;//9;
 
-	int ld0_addr[NB_FU], ld1_addr[NB_FU], st_addr[LAT][NB_FU];
+	int ld0_addr[NB_FU], ld1_addr[NB_FU], st_addr_ld[NB_FU], st_addr[LAT][NB_FU];
 #	pragma HLS ARRAY_PARTITION variable=ld0_addr dim=0 complete
 #	pragma HLS ARRAY_PARTITION variable=ld1_addr dim=0 complete
 #	pragma HLS ARRAY_PARTITION variable=st_addr dim=0 complete
@@ -47,51 +48,75 @@ int core(
 #	pragma HLS ARRAY_PARTITION variable=ld1 dim=0 complete
 #	pragma HLS ARRAY_PARTITION variable=st dim=0 complete
 
-	int idx, idx_st_addr=0;
+	int id, idx, idx_st_addr=0;
 	int i=0, j=0, k=0;
 	const int bound = lbg(ops);
+	//half loop_carried_val[NB_FU];
 	for (idx=0; idx<bound+LAT; idx++) {
 #		pragma HLS loop_flatten off
 #		pragma HLS dependence dependent=false type=inter variable=reg_file
+//#		pragma HLS dependence dependent=false type=inter variable=loop_carried_val
 #		pragma HLS pipeline II=1
 
+
+		half res[NB_FU];
 		if (not cu0_res.empty()) { // All CU are used with the same rate, so the queue should be filled at the same pace
-			half res[NB_FU];
-			cu0_res >> res[0];
-			cu1_res >> res[1];
-			multiple_write_tbl(ops, reg_file,
-					st_addr[idx_st_addr], res);
+			CUres(0) >> res[0];
+			CUres(1) >> res[1];
+			// multiple_write_tbl(ops, reg_file,
+			//		st_addr[idx_st_addr], res);
 		}
+
+		for (id=0; id<NB_FU; id++) {
+#			pragma HLS unroll
+			agu(ops[id].opcode, i, j, k, ld0_addr[id], ld1_addr[id], st_addr_ld[id]);
+		}
+
+		multiple_readwrite_tbl (
+				ops,
+				reg_file,
+				ld0_addr, ld1_addr, st_addr_ld, st_addr[idx_st_addr],
+				ld0, ld1, st, res,
+				idx >= LAT);
+
+		for (id=0; id<NB_FU; id++) {
+#			pragma HLS unroll
+			st_addr[idx_st_addr][id] = st_addr_ld[id];
+		}
+
 
 		if (idx < bound) {
-			int id;
-			for (id=0; id<NB_FU; id++) {
-	#			pragma HLS unroll
+/*			for (id=0; id<NB_FU; id++) {
+#				pragma HLS unroll
 				agu(ops[id].opcode, i, j, k, ld0_addr[id], ld1_addr[id], st_addr[idx_st_addr][id]);
+			}*/
+
+			// multiple_read_tbl(ops, reg_file,
+			//	ld0_addr, ld1_addr, st_addr[idx_st_addr], ld0, ld1, st);
+
+
+			half a[NB_FU], b[NB_FU], c[NB_FU];
+			for (id=0; id<NB_FU_ADDMUL; id++) {
+#				pragma HLS unroll
+				fu_addmul_axis(ops[id].opcode,
+					st[id], ld0[id], ld1[id], //loop_carried_val[id],
+					i, j, k,
+					a[id], b[id], c[id]);
 			}
 
-			multiple_read_tbl(ops, reg_file,
-				ld0_addr, ld1_addr, st_addr[idx_st_addr], ld0, ld1, st);
-
-
-			half a0, b0, c0;
-			half a1, b1, c1;
-			fu_addmul_axis(ops[0].opcode,
-				st[0], ld0[0], ld1[0],
-				i, j, k,
-				a0, b0, c0);
-			fu_addmul_axis(ops[1].opcode,
-				st[1], ld0[1], ld1[1],
-				i, j, k,
-				a1, b1, c1);
-
-			cu0_a << a0;
-			cu0_b << b0;
-			cu0_c << c0;
-			cu1_a << a1;
-			cu1_b << b1;
-			cu1_c << c1;
+#			ifdef __SYNTHESIS__
+			CUa(0) << a[0];
+			CUa(1) << a[1];
+			CUb(0) << b[0];
+			CUb(1) << b[1];
+			CUc(0) << c[0];
+			CUc(1) << c[1];
+#			else
+			CUres(0) << a[0]*b[0]+c[0];
+			CUres(1) << a[1]*b[1]+c[1];
+#			endif
 		}
+
 
 		increment_idx(idx_st_addr, LAT);
 		increment_idx(k, N);

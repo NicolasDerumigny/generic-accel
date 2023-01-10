@@ -5,10 +5,12 @@
 
 constexpr int N = 64;
 
-constexpr int NB_FU = 2;
+constexpr int NB_FU_ADDMUL = 2;
+constexpr int NB_FU = NB_FU_ADDMUL;
 
 constexpr int REG_SIZ = 27; // Upper bound for correlation is 5 per pb + 2 cst
 constexpr int MAX_PGM_SIZE = 64; // to be large
+constexpr int FU_LATENCY = 5;
 
 // #define SUBCMV
 // #define PMUL
@@ -19,12 +21,18 @@ constexpr int MAX_PGM_SIZE = 64; // to be large
 // #define DIV
 // #define SETM
 #define TRGL
+//#define BLAS1
+
+#define CUa(id) cu ## id ##_a
+#define CUb(id) cu ## id ##_b
+#define CUc(id) cu ## id ##_c
+#define CUres(id) cu ## id ##_res
 
 #define ONECU(id) \
-		gu_t &cu ## id ## _a, gu_t &cu ## id ##  _b, gu_t &cu ## id ## _c,	gu_t &cu ## id ##  _res
+		gu_t &CUa(id), gu_t &CUb(id), gu_t &CUc(id), gu_t &CUres(id)
 
 #define ONECU_NAME(id) \
-		cu ## id ## _a, cu ## id ##  _b, cu ## id ## _c, cu ## id ##  _res
+		CUa(id), CUb(id), CUc(id), CUres(id)
 
 #define CU_INTERFACE \
 		ONECU(0), \
@@ -33,6 +41,7 @@ constexpr int MAX_PGM_SIZE = 64; // to be large
 #define CU_INTERFACE_NAMES \
 		ONECU_NAME(0), \
 		ONECU_NAME(1)
+
 
 /** Inplace operations are supported, except on:
  * - mulmm
@@ -44,58 +53,64 @@ constexpr int MAX_PGM_SIZE = 64; // to be large
  * FU also results in undefined behaviour
  */
 enum op : uint8_t {
-	noop     = 0,
-	mulmm    = 1,
-	mulmv    = 2,
-	mulsm    = 3,
-	mulsv    = 4,
-	muls     = 5,
-	trm      = 6, // Transpose matrix
-	addm     = 7,
-	addv     = 8,
-	adds     = 9,
-	subm     = 10,
+	noop,
+	mulmm,
+	mulmv,
+	mulsm,
+	mulsv,
+	muls,
+	trm, // Transpose matrix
+	addm,
+	addv,
+	adds,
+	subm,
+#	ifdef BLAS1
+	copys,
+	dotv,
+	sasum,
+	isamax,
+#	endif
 # 	ifdef SUBCMV
-	subcmv   = 11, // Point-wise substraction with column-wise (line-independant) value
+	subcmv, // Point-wise substraction with column-wise (line-independant) value
 #	endif
-	subv     = 12,
-	subs     = 13,
+	subv,
+	subs,
 #   ifdef PMUL
-	pmulm    = 14,  // Point-wise mul: hadamard product
-	pmulv    = 15,  // Point-wise mul
+	pmulm,  // Point-wise mul: hadamard product
+	pmulv,  // Point-wise mul
 #	endif
-	oprodv   = 16,
+	oprodv,
 #   ifdef ABS
-	absm     = 17,
-	absv     = 18,
-	abss     = 19,
+	absm,
+	absv,
+	abss,
 # 	endif
 #   ifdef SQRT
-	sqrtv    = 20,
-	sqrts    = 21,
+	sqrtv,
+	sqrts ,
 #	endif
 #	ifdef ACCSUMV
-	accsumcm = 22,  // Accumulation of matrix in a vector by column-wise
+	accsumcm,  // Accumulation of matrix in a vector by column-wise
 				   // (line-indepedant) sum of all the elements
 #	endif
 # 	ifdef CUTMIV
-	cutminv  = 23,  // Pointwise selection: `if coef < threshold 1 else coef`
+	cutminv,  // Pointwise selection: `if coef < threshold 1 else coef`
 #   endif
 #	ifdef DIV
-	divms    = 24,  // Pointwise division of matrices
-	divvs    = 25,  // Pointwise division of vectors
-	divcmv   = 26,  // Point-wise division with column-wise (line-independant) value
+	divms,  // Pointwise division of matrices
+	divvs,  // Pointwise division of vectors
+	divcmv,  // Point-wise division with column-wise (line-independant) value
 #	endif
 #	ifdef SETM
-	set0m    = 27,
-	setidm   = 28,
-	setd1    = 29,
+	set0m,
+	setidm,
+	setd1,
 #	endif
 #	ifdef TRGL
-	multrmm  = 30,
-	multrmv  = 31,
-	multrsm  = 32,
-	addtrm   = 33,
+	multrmm,
+	multrmv,
+	multrsm,
+	addtrm,
 #	endif
 };
 

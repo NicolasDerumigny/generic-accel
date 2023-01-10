@@ -18,7 +18,7 @@ add_files generic-accel/src/lbg.cpp
 add_files generic-accel/src/lbg.hpp
 add_files generic-accel/src/rw.cpp
 add_files generic-accel/src/rw.hpp
-add_files -tb generic-accel/test/main.cpp -cflags "-Wno-unknown-pragmas -Wno-unknown-pragmas -Wno-unknown-pragmas -Wno-unknown-pragmas -Wno-unknown-pragmas" -csimflags "-Wno-unknown-pragmas"
+add_files -tb generic-accel/test/main.cpp -cflags "-Wno-unknown-pragmas -Wno-unknown-pragmas -Wno-unknown-pragmas -Wno-unknown-pragmas -Wno-unknown-pragmas -Wno-unknown-pragmas -Wno-unknown-pragmas -Wno-unknown-pragmas -Wno-unknown-pragmas" -csimflags "-Wno-unknown-pragmas"
 open_solution "zcu104" -flow_target vivado
 set_part {xczu7ev-ffvc1156-2-e}
 create_clock -period 10 -name default

@@ -19,6 +19,7 @@ inline half do_abs(half value) {
 void fu_addmul_axis (
 		op_t op,
 		half st, half ld0, half ld1,
+		//half &loop_carried_val,
 		int i, int j, int k,
 		half &a, half &b, half &c) {
 #	pragma HLS inline off
@@ -31,6 +32,18 @@ void fu_addmul_axis (
 		default: {
 			break;
 		}
+
+#		ifdef BLAS1
+		case op::copys: {
+			a = ld0;
+		}
+		case op::sasum:
+		case op::isamax:
+		case op::dotv: {
+			ret = max(ret, FU_LATENCY*N);
+			break;
+		}
+#		endif
 
 		case op::mulmm:
 		case op::mulmv:

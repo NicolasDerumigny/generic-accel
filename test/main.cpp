@@ -69,19 +69,19 @@ void init_prgm_simple(ap_uint<8> PRGM[MAX_PGM_SIZE][NB_FU][4]) {
 	init();
 
 	op0(addm, r[3], r[4], r[5]);
-	/*op1(subm, r[0], r[1], r[2]);
-	op2(noop, null, null, null);
-	op3(noop, null, null, null);
+	//op1(subm, r[0], r[1], r[2]);
+	/*op2(noop, null, null, null);
+	op3(noop, null, null, null);*/
 
-	op0(mulmm, r[1], r[3], r[0]);
+	//op0(mulmm, r[1], r[3], r[0]);
 	op1(noop, null, null, null);
-	op2(noop, null, null, null);
+	/*op2(noop, null, null, null);
 	op3(noop, null, null, null);*/
 
 	halt();
 }
 
-void init_prgm(ap_uint<8> PRGM[MAX_PGM_SIZE][NB_FU][4]) {
+/*void init_prgm(ap_uint<8> PRGM[MAX_PGM_SIZE][NB_FU][4]) {
 	init();
 
 	int float_n = r[0];
@@ -170,7 +170,7 @@ void init_prgm(ap_uint<8> PRGM[MAX_PGM_SIZE][NB_FU][4]) {
 	op3(noop, null, null, null);
 
 	halt();
-}
+}*/
 
 inline int access(int reg_id, int i, int j) {
 	return reg_id*N*N + i*N + j;
@@ -179,8 +179,8 @@ inline int access(int reg_id, int i, int j) {
 inline void print_reg_file(half reg_file[REG_SIZ*N*N]) {
 	for (int id=0; id<REG_SIZ; ++id) {
 		std::cout<<"reg"<<id<<":"<<std::endl;
-		for (int i=0; i<4; i++) {
-			for (int j=0; j<4; j++) {
+		for (int i=0; i<64; i++) {
+			for (int j=0; j<64; j++) {
 				std::cout<<reg_file[access(id, i, j)] << " ";
 			}
 			std::cout<<std::endl;
@@ -292,6 +292,7 @@ int main() {
 	ap_uint<64> counter = 1;
 	ap_uint<64> exec_time = 42;
 	gu_t stream_a, stream_b, stream_c, stream_res;
+	gu_t stream_a1, stream_b1, stream_c1, stream_res1;
 	generic_accel(
 			(DMA_TYPE*) reg_file,
 			(DMA_TYPE*) reg_file_out,
@@ -302,7 +303,11 @@ int main() {
 			stream_a,
 			stream_b,
 			stream_c,
-			stream_res);
+			stream_res,
+			stream_a1,
+			stream_b1,
+			stream_c1,
+			stream_res1);
 
 	kernel_correlation (data, corr);
 
