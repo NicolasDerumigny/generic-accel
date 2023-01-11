@@ -5,6 +5,9 @@
 void multiple_readwrite_tbl (
 		macro_op_t ops[NB_FU],
 		half reg_file[REG_SIZ][N*N],
+#		ifdef BLAS1
+		half lc_reg[NB_FU],
+#		endif
 		int ld0_addr[NB_FU], int ld1_addr[NB_FU], int st_ld_addr[NB_FU], int st_wr_addr[NB_FU],
 		half ld0[NB_FU], half ld1[NB_FU], half st_rd[NB_FU], half st_wr[NB_FU],
 		bool write) {
@@ -38,13 +41,24 @@ void multiple_readwrite_tbl (
 					st_rd[j] = value;
 			}
 		}
-		if (st_reg >= 0 and write) {
-			hls::print("%f\n", (float) st_wr[st_reg]);
-			reg_file[i][st_wr_addr[st_reg]] = st_wr[st_reg];
+		if (write and st_reg >= 0) {
+			half value = st_wr[st_reg];
+# 			ifdef BLAS1
+			if (st_wr_addr[st_reg] != RED_REG) {
+#			endif
+				//hls::print("%f\n", (float) value);
+				reg_file[i][st_wr_addr[st_reg]] = value;
+# 			ifdef BLAS1
+			} else  {
+				//hls::print("PROUT %f\n", (float) value);
+				lc_reg[st_reg] = value;
+			}
+#			endif
 		}
 	}
 }
 
+/*
 void multiple_read_tbl (
 		macro_op_t ops[NB_FU],
 		half reg_file[REG_SIZ][N*N],
@@ -100,3 +114,4 @@ void multiple_write_tbl (
 			reg_file[i][st_addr[the_one]] = st[the_one];
 	}
 }
+*/

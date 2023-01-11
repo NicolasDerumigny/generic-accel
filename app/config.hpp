@@ -10,7 +10,6 @@ constexpr int NB_FU = NB_FU_ADDMUL;
 
 constexpr int REG_SIZ = 27; // Upper bound for correlation is 5 per pb + 2 cst
 constexpr int MAX_PGM_SIZE = 64; // to be large
-constexpr int FU_LATENCY = 5;
 
 // #define SUBCMV
 // #define PMUL
@@ -21,7 +20,12 @@ constexpr int FU_LATENCY = 5;
 // #define DIV
 // #define SETM
 #define TRGL
-//#define BLAS1
+#define BLAS1
+
+// Internal constants
+constexpr int FU_LATENCY = 7;
+constexpr int NO_RW = -1;
+constexpr int RED_REG = -2;
 
 #define CUa(id) cu ## id ##_a
 #define CUb(id) cu ## id ##_b
@@ -65,10 +69,10 @@ enum op : uint8_t {
 	adds,
 	subm,
 #	ifdef BLAS1
-	copys,
+	copyv,
 	dotv,
 	sasum,
-	isamax,
+	//isamax,
 #	endif
 # 	ifdef SUBCMV
 	subcmv, // Point-wise substraction with column-wise (line-independant) value

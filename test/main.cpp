@@ -78,6 +78,12 @@ void init_prgm_simple(ap_uint<8> PRGM[MAX_PGM_SIZE][NB_FU][4]) {
 	/*op2(noop, null, null, null);
 	op3(noop, null, null, null);*/
 
+	op0(dotv, r[0], r[3], r[1]);
+	op1(noop, null, null, null);
+
+	op0(sasum, r[6], r[7], null);
+	op1(noop, null, null, null);
+
 	halt();
 }
 
@@ -284,6 +290,14 @@ int main() {
 				}*/
 			}
 		}
+	}
+	for (int i=0; i<N; i++) {
+				for (int j=0; j<N; j++) {
+					if (j%2)
+						reg_file[access(7, i, j)] = (i==0)?1:0;
+					else
+						reg_file[access(7, i, j)] = (i==0)?-1:0;
+				}
 	}
 
 	std::cout<<"Register File = "<<reg_file<<std::endl;

@@ -17,20 +17,6 @@ int lbg (macro_op_t ops[NB_FU]) {
 				break;
 			}
 
-#			ifdef BLAS1
-			case op::copys:
-			case op::swapv: {
-				ret = max(ret, N);
-				break;
-			}
-			case op::sasum:
-			case op::isamax:
-			case op::dotv: {
-				ret = max(ret, FU_LATENCY*N);
-				break;
-			}
-#			endif
-
 			case op::mulmv:
 			case op::mulsm:
 			case op::trm:
@@ -81,6 +67,9 @@ int lbg (macro_op_t ops[NB_FU]) {
 #			ifdef DIV
 			case op::divvs:
 #			endif
+#			ifdef BLAS1
+			case op::copyv:
+#			endif
 			{
 				ret = max(ret, N);
 				break;
@@ -109,6 +98,16 @@ int lbg (macro_op_t ops[NB_FU]) {
 			case op::multrsm:
 			case op::addtrm: {
 				ret = max(ret, N*(N+1)/2);
+				break;
+			}
+#			endif
+
+#			ifdef BLAS1
+			case op::dotv:
+			case op::sasum:
+			//case op::isamax:
+			{
+				ret = max(ret, FU_LATENCY*N);
 				break;
 			}
 #			endif

@@ -1,6 +1,8 @@
 #include "fu.hpp"
 #include "hls_math.h"
 
+#define max(a, b) ((a>b)?a:b)
+
 inline half do_minus(half value) {
 #	pragma HLS inline
 	ap_uint<16> minus_in = *(ap_uint<16>*) &value;
@@ -8,7 +10,7 @@ inline half do_minus(half value) {
 	return *(half*) &minus_in;
 }
 
-#ifdef ABS
+#if defined(ABS) || defined(BLAS1)
 inline half do_abs(half value) {
 	ap_uint<16> abs = *(ap_uint<16>*) &value;
 	abs = abs & 0x7FFF;
@@ -19,8 +21,13 @@ inline half do_abs(half value) {
 void fu_addmul_axis (
 		op_t op,
 		half st, half ld0, half ld1,
-		//half &loop_carried_val,
+#		ifdef BLAS1
+		half loop_carried_val,
+#		endif
 		int i, int j, int k,
+#		ifdef BLAS1
+		int red_idx, int lat_step,
+#		endif
 		half &a, half &b, half &c) {
 #	pragma HLS inline off
 # 	pragma HLS pipeline II=1
@@ -34,13 +41,36 @@ void fu_addmul_axis (
 		}
 
 #		ifdef BLAS1
-		case op::copys: {
+		case op::copyv: {
 			a = ld0;
+			break;
 		}
-		case op::sasum:
-		case op::isamax:
+		case op::sasum: {
+			if (red_idx == 0 and lat_step == 0) {
+				a = do_abs(ld0);
+			}
+			else {
+				a = do_abs(ld0);
+				c = loop_carried_val;
+			}
+			break;
+		}
+		/*case op::isamax: {
+			if (red_idx == 0 and lat_step == 0) {
+				a = ld0;
+			}
+			else {
+				a = max(ld0, loop_carried_val);
+			}
+			break;
+		}*/
+
 		case op::dotv: {
-			ret = max(ret, FU_LATENCY*N);
+			a = ld0;
+			b = ld1;
+			if (not (red_idx == 0 and lat_step == 0)) {
+				c = loop_carried_val;
+			}
 			break;
 		}
 #		endif
@@ -199,270 +229,3 @@ void fu_divsqrt (
 	}
 }
 #endif
-
-/*static void fu_addmul (
-		op_t op,
-		half &st, half ld0, half ld1,
-		int i, int j, int k) {
-#	pragma HLS inline off
-# 	pragma HLS pipeline II=1
-# 	pragma HLS allocation operation instances=hadd limit=1
-# 	pragma HLS allocation operation instances=hmul limit=1
-	half ld_st = st;
-	half add_op0, add_op1;
-	half mul_res;
-
-	switch (op) {
-		case op::mulmm:
-		case op::mulmv:
-		case op::mulsm:
-		case op::mulsv:
-		case op::muls:
-		case op::pmulm:
-		case op::pmulv:
-		case op::oprodv: {
-			mul_res = ld0*ld1;
-			break;
-		}
-
-		default: {
-			break;
-		}
-	}
-
-	switch (op) {
-		case op::mulmm:
-		case op::mulmv: {
-			add_op1 = mul_res;
-			if (j==0)
-				add_op0 = 0;
-			else
-				add_op0 = ld_st;
-			break;
-		}
-
-		case op::trm: {
-			st = ld0;
-			break;
-		}
-
-		case op::addm:
-		case op::addv:
-		case op::adds: {
-			add_op0 = ld0;
-			add_op1 = ld1;
-			break;
-		}
-
-		case op::mulsm:
-		case op::mulsv:
-		case op::muls:
-		case op::pmulm:
-		case op::pmulv:
-		case op::oprodv: {
-			st = mul_res;
-			break;
-		}
-
-		case op::subm:
-		case op::subv:
-		case op::subs:
-		case op::subcmv: {
-			add_op1 = do_minus(ld1);
-			add_op0 = ld0;
-			break;
-		}
-
-		case op::accsumcm: {
-			add_op1 = ld0;
-			if (j==0)
-				add_op0 = 0;
-			else
-				add_op0 = ld_st;
-			break;
-		}
-
-		case op::cutminv: {
-			st = (ld0<=CUTOFF)?(half)1.0:ld0;
-			break;
-		}
-
-		case op::set0m: {
-			st = 0;
-			break;
-		}
-
-		case op::setidm: {
-			st = (i==j);
-			break;
-		}
-
-		case op::setd1:{
-			st = (j==k)?(half)1.0f:ld0;
-			break;
-		}
-
-		case op::noop: {
-			break;
-		}
-	}
-	switch (op) {
-		case op::addm:
-		case op::addv:
-		case op::adds:
-		case op::subm:
-		case op::subcmv:
-		case op::subv:
-		case op::subs:
-		case op::mulmm:
-		case op::mulmv:
-		case op::accsumcm: {
-			st = add_op0 + add_op1;
-			break;
-		}
-
-		default: {
-			break;
-		}
-	}
-}
-
-
-
-static void fu_mul (
-		op_t op,
-		half &st, half ld0, half ld1,
-		int i, int j, int k) {
-#	pragma HLS inline off
-# 	pragma HLS pipeline II=1
-# 	pragma HLS allocation operation instances=hmul limit=1
-	half ld_st = st;
-	half add_op0, add_op1;
-	half mul_res;
-
-	switch (op) {
-		case op::mulsm:
-		case op::mulsv:
-		case op::muls:
-		case op::pmulm:
-		case op::pmulv:
-		case op::oprodv: {
-			mul_res = ld0*ld1;
-			break;
-		}
-
-		default: {
-			break;
-		}
-	}
-
-	switch (op) {
-		case op::trm: {
-			st = ld0;
-			break;
-		}
-
-		case op::mulsm:
-		case op::mulsv:
-		case op::muls:
-		case op::pmulm:
-		case op::pmulv:
-		case op::oprodv: {
-			st = mul_res;
-			break;
-		}
-
-		default: {
-			break;
-		}
-	}
-}
-
-static void fu_add (
-		op_t op,
-		half &st, half ld0, half ld1,
-		int i, int j, int k) {
-#	pragma HLS inline off
-# 	pragma HLS pipeline II=1
-# 	pragma HLS allocation operation instances=hadd limit=1
-	half ld_st = st;
-	half add_op0, add_op1;
-
-	switch (op) {
-		default: {
-			break;
-		}
-
-		case op::trm: {
-			st = ld0;
-			break;
-		}
-
-		case op::addm:
-		case op::addv:
-		case op::adds: {
-			add_op0 = ld0;
-			add_op1 = ld1;
-			break;
-		}
-
-		case op::subm:
-		case op::subv:
-		case op::subs:
-		case op::subcmv: {
-			add_op1 = do_minus(ld1);
-			add_op0 = ld0;
-			break;
-		}
-
-		case op::absm:
-		case op::absv:
-		case op::abss: {
-			st = do_abs(ld0);
-			break;
-		}
-
-		case op::accsumcm: {
-			add_op1 = ld0;
-			if (j==0)
-				add_op0 = 0;
-			else
-				add_op0 = ld_st;
-			break;
-		}
-
-		case op::set0m: {
-			st = 0;
-			break;
-		}
-
-		case op::setidm: {
-			st = (i==j);
-			break;
-		}
-
-		case op::setd1:{
-			st = (j==k)?(half)1.0f:ld0;
-			break;
-		}
-	}
-	switch (op) {
-		case op::addm:
-		case op::addv:
-		case op::adds:
-		case op::subm:
-		case op::subcmv:
-		case op::subv:
-		case op::subs:
-		case op::mulmm:
-		case op::mulmv:
-		case op::accsumcm: {
-			st = add_op0 + add_op1;
-			break;
-		}
-
-		default: {
-			break;
-		}
-	}
-}*/

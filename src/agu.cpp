@@ -7,13 +7,17 @@ static inline int access (int i, int j) {
 void agu (
 		op_t op,
 		int i, int j, int k,
+#		ifdef BLAS1
+		int red_idx, int lat_step,
+#		endif
 		int &ld0_addr,
 		int &ld1_addr,
-		int &st_addr) {
+		int &st_addr
+) {
 # 	pragma HLS inline
-	ld0_addr = -1;
-	ld1_addr = -1;
-	st_addr = -1;
+	ld0_addr = NO_RW;
+	ld1_addr = NO_RW;
+	st_addr = NO_RW;
 
 	switch (op) {
 		case op::mulmm: {
@@ -223,7 +227,10 @@ void agu (
 #		ifdef CUTMINV
 		case op::cutminv:
 #		endif
-#		if defined(ABS) || defined(SQRT) || defined(CUTMINV)
+#		ifdef BLAS1
+		case op::copyv:
+#		endif
+#		if defined(ABS) || defined(SQRT) || defined(CUTMINV) || defined(BLAS1)
 		{
 			if (i==0 and j==0) {
 				ld0_addr = access(0,k);
@@ -254,6 +261,34 @@ void agu (
 			if (i==0) {
 				ld0_addr = access(j,k);
 				st_addr = access(j,k);
+			}
+			break;
+		}
+#		endif
+
+#		ifdef BLAS1
+		case op::dotv: {
+			if (lat_step == 0 and red_idx < N) {
+				ld0_addr = access(0, red_idx);
+				ld1_addr = access(0, red_idx);
+				if (red_idx < N-1) {
+					st_addr = RED_REG;
+				} else {
+					st_addr = access(0,0);
+				}
+			}
+			break;
+		}
+
+		case op::sasum:
+		/*case op::isamax:*/ {
+			if (lat_step == 0 and red_idx < N) {
+				ld0_addr = access(0, red_idx);
+				if (red_idx < N-1) {
+					st_addr = RED_REG;
+				} else {
+					st_addr = access(0,0);
+				}
 			}
 			break;
 		}

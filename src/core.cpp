@@ -17,7 +17,7 @@ static inline void increment_idx(int &idx, const int max_val) {
 }
 
 #ifdef TRGL
-inline bool is_triangular (macro_op_t ops[NB_FU]) {
+inline bool is_triangular(macro_op_t ops[NB_FU]) {
 	bool ret = true;
 	int i;
 	for (i=0; i<NB_FU; i++) {
@@ -37,9 +37,9 @@ int core(
 	// To avoid read/write conflicts (loop carried dependency by read/writes
 	// to the same *local* buffer), we manually implement a rolling buffer
 	// on temporary i/o vars
-	constexpr int LAT=8;//9;
+	//constexpr int LAT=8;
 
-	int ld0_addr[NB_FU], ld1_addr[NB_FU], st_addr_ld[NB_FU], st_addr[LAT][NB_FU];
+	int ld0_addr[NB_FU], ld1_addr[NB_FU], st_addr_ld[NB_FU], st_addr[FU_LATENCY][NB_FU];
 #	pragma HLS ARRAY_PARTITION variable=ld0_addr dim=0 complete
 #	pragma HLS ARRAY_PARTITION variable=ld1_addr dim=0 complete
 #	pragma HLS ARRAY_PARTITION variable=st_addr dim=0 complete
@@ -50,57 +50,73 @@ int core(
 
 	int id, idx, idx_st_addr=0;
 	int i=0, j=0, k=0;
+
+#	ifdef BLAS1
+	int red_idx = 0;
+	int lat_step = 0;
+	half loop_carried_vals[NB_FU];
+#	pragma HLS ARRAY_PARTITION variable=loop_carried_vals dim=0 complete
+#	endif
+
 	const int bound = lbg(ops);
-	//half loop_carried_val[NB_FU];
-	for (idx=0; idx<bound+LAT; idx++) {
+#	ifdef TRGL
+	const bool is_tr = is_triangular(ops);
+#	endif
+	for (idx=0; idx<bound+FU_LATENCY; idx++) {
 #		pragma HLS loop_flatten off
 #		pragma HLS dependence dependent=false type=inter variable=reg_file
-//#		pragma HLS dependence dependent=false type=inter variable=loop_carried_val
+#		ifdef BLAS1
+#		pragma HLS dependence dependent=false type=inter variable=loop_carried_vals
+#		endif
 #		pragma HLS pipeline II=1
 
-
 		half res[NB_FU];
-		if (not cu0_res.empty()) { // All CU are used with the same rate, so the queue should be filled at the same pace
+		if (not cu0_res.empty()
+#			ifndef __SYNTHESIS__
+				and idx>=FU_LATENCY // Simulate latency
+#			endif
+		) { // All CU are used with the same rate, so the queue should be filled at the same pace
 			CUres(0) >> res[0];
 			CUres(1) >> res[1];
-			// multiple_write_tbl(ops, reg_file,
-			//		st_addr[idx_st_addr], res);
 		}
 
 		for (id=0; id<NB_FU; id++) {
 #			pragma HLS unroll
-			agu(ops[id].opcode, i, j, k, ld0_addr[id], ld1_addr[id], st_addr_ld[id]);
+			agu(ops[id].opcode, i, j, k,
+#			ifdef BLAS1
+				red_idx, lat_step,
+#			endif
+			ld0_addr[id], ld1_addr[id], st_addr_ld[id]);
 		}
 
 		multiple_readwrite_tbl (
 				ops,
 				reg_file,
+#				ifdef BLAS1
+				loop_carried_vals,
+#				endif
 				ld0_addr, ld1_addr, st_addr_ld, st_addr[idx_st_addr],
 				ld0, ld1, st, res,
-				idx >= LAT);
+				idx >= FU_LATENCY);
 
 		for (id=0; id<NB_FU; id++) {
 #			pragma HLS unroll
 			st_addr[idx_st_addr][id] = st_addr_ld[id];
 		}
 
-
 		if (idx < bound) {
-/*			for (id=0; id<NB_FU; id++) {
-#				pragma HLS unroll
-				agu(ops[id].opcode, i, j, k, ld0_addr[id], ld1_addr[id], st_addr[idx_st_addr][id]);
-			}*/
-
-			// multiple_read_tbl(ops, reg_file,
-			//	ld0_addr, ld1_addr, st_addr[idx_st_addr], ld0, ld1, st);
-
-
 			half a[NB_FU], b[NB_FU], c[NB_FU];
 			for (id=0; id<NB_FU_ADDMUL; id++) {
 #				pragma HLS unroll
 				fu_addmul_axis(ops[id].opcode,
-					st[id], ld0[id], ld1[id], //loop_carried_val[id],
+					st[id], ld0[id], ld1[id],
+#					ifdef BLAS1
+					loop_carried_vals[id],
+#					endif
 					i, j, k,
+#					ifdef BLAS1
+					red_idx, lat_step,
+#					endif
 					a[id], b[id], c[id]);
 			}
 
@@ -118,16 +134,24 @@ int core(
 		}
 
 
-		increment_idx(idx_st_addr, LAT);
+		increment_idx(idx_st_addr, FU_LATENCY);
 		increment_idx(k, N);
 		if (k==0) {
 			increment_idx(j, N);
 			if (j==0)
 				i++;
 #			ifdef TRGL
-			k = j;
+			if (is_tr) {
+				k = j;
+			}
 #			endif
 		}
+#		ifdef BLAS1
+		increment_idx(lat_step, FU_LATENCY);
+		if (lat_step == 0) {
+			red_idx++;
+		}
+#		endif
 	}
 
 	return bound;
