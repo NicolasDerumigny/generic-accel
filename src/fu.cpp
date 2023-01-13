@@ -182,10 +182,6 @@ void fu_divsqrt (
 		int i, int j, int k) {
 #	pragma HLS inline off
 # 	pragma HLS pipeline II=1
-# 	pragma HLS allocation operation instances=hadd limit=1
-# 	pragma HLS allocation operation instances=hmul limit=1
-	half ld_st = st;
-	half add_op0, add_op1;
 
 	switch (op) {
 		default: {
@@ -205,27 +201,6 @@ void fu_divsqrt (
 			st = ld0/ld1;
 			break;
 		}
-
-#		ifdef SETM
-		case op::set0m: {
-			st = 0;
-			break;
-		}
-
-		case op::setidm: {
-			st = (i==j);
-			break;
-		}
-
-		case op::setd1:{
-			st = (j==k)?(half)1.0f:ld0;
-			break;
-		}
-
-		case op::noop: {
-			break;
-		}
-#		endif
 	}
 }
 #endif

@@ -7,7 +7,7 @@
 #include "lbg.hpp"
 #include "rw.hpp"
 
-//#include "hls_print.h"
+#include "hls_print.h"
 
 static inline void increment_idx(int &idx, const int max_val) {
 #	pragma HLS inline
@@ -62,11 +62,18 @@ int core(
 #	ifdef TRGL
 	const bool is_tr = is_triangular(ops);
 #	endif
+
+#	if defined(DIV) && defined(SQRT)
+	half st_div[FU_LATENCY][NB_FU_DIVSQRT];
+#	endif
 	for (idx=0; idx<bound+FU_LATENCY; idx++) {
 #		pragma HLS loop_flatten off
 #		pragma HLS dependence dependent=false type=inter variable=reg_file
 #		ifdef BLAS1
 #		pragma HLS dependence dependent=false type=inter variable=loop_carried_vals
+#		endif
+#		if defined(DIV) && defined(SQRT)
+#		pragma HLS dependence dependent=false type=inter variable=st_div
 #		endif
 #		pragma HLS pipeline II=1
 
@@ -78,6 +85,8 @@ int core(
 		) { // All CU are used with the same rate, so the queue should be filled at the same pace
 			CUres(0) >> res[0];
 			CUres(1) >> res[1];
+			CUres(2) >> res[2];
+			res[3] = st_div[idx_st_addr][0];
 		}
 
 		for (id=0; id<NB_FU; id++) {
@@ -119,17 +128,24 @@ int core(
 #					endif
 					a[id], b[id], c[id]);
 			}
+			fu_divsqrt(ops[3].opcode,
+					st_div[idx_st_addr][0], ld0[3], ld1[3],
+					i, j, k);
 
 #			ifdef __SYNTHESIS__
 			CUa(0) << a[0];
 			CUa(1) << a[1];
+			CUa(2) << a[2];
 			CUb(0) << b[0];
 			CUb(1) << b[1];
+			CUb(2) << b[2];
 			CUc(0) << c[0];
 			CUc(1) << c[1];
+			CUc(2) << c[2];
 #			else
 			CUres(0) << a[0]*b[0]+c[0];
 			CUres(1) << a[1]*b[1]+c[1];
+			CUres(2) << a[2]*b[2]+c[2];
 #			endif
 		}
 
@@ -212,6 +228,10 @@ void generic_accel(
 #	pragma HLS INTERFACE mode=axis port=cu1_b
 #	pragma HLS INTERFACE mode=axis port=cu1_c
 #	pragma HLS INTERFACE mode=axis port=cu1_res
+#	pragma HLS INTERFACE mode=axis port=cu2_a
+#	pragma HLS INTERFACE mode=axis port=cu2_b
+#	pragma HLS INTERFACE mode=axis port=cu2_c
+#	pragma HLS INTERFACE mode=axis port=cu2_res
 
 	half reg_file[REG_SIZ][N*N];
 #	pragma HLS BIND_STORAGE variable=reg_file type=ram_t2p impl=bram

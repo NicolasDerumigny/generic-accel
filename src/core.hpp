@@ -5,9 +5,6 @@
 #include "dma.hpp"
 #include "hls_stream.h"
 
-constexpr float CUTOFF = 0.1f;
-
-
 using gu_t = hls::stream<half>;
 
 void generic_accel(

@@ -43,8 +43,8 @@
 // 0x044 : Data signal of end_time
 //         bit 31~0 - end_time[63:32] (Read)
 // 0x048 : reserved
-// 0x200 ~
-// 0x3ff : Memory 'pgm' (512 * 8b)
+// 0x400 ~
+// 0x7ff : Memory 'pgm' (1024 * 8b)
 //         Word n : bit [ 7: 0] - pgm[4n]
 //                  bit [15: 8] - pgm[4n+1]
 //                  bit [23:16] - pgm[4n+2]
@@ -63,8 +63,8 @@
 #define XGENERIC_ACCEL_CONTROL_BITS_START_TIME_DATA 64
 #define XGENERIC_ACCEL_CONTROL_ADDR_END_TIME_DATA   0x040
 #define XGENERIC_ACCEL_CONTROL_BITS_END_TIME_DATA   64
-#define XGENERIC_ACCEL_CONTROL_ADDR_PGM_BASE        0x200
-#define XGENERIC_ACCEL_CONTROL_ADDR_PGM_HIGH        0x3ff
+#define XGENERIC_ACCEL_CONTROL_ADDR_PGM_BASE        0x400
+#define XGENERIC_ACCEL_CONTROL_ADDR_PGM_HIGH        0x7ff
 #define XGENERIC_ACCEL_CONTROL_WIDTH_PGM            8
-#define XGENERIC_ACCEL_CONTROL_DEPTH_PGM            512
+#define XGENERIC_ACCEL_CONTROL_DEPTH_PGM            1024
 

@@ -1,6 +1,8 @@
 #include "ap_int.h"
 #include "config.hpp"
 
+constexpr float CUTOFF = 0.1f;
+
 void fu_addmul_axis (
 		op_t op,
 		half st, half ld0, half ld1,

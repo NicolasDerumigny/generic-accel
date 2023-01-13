@@ -1,6 +1,6 @@
 #include "rw.hpp"
 
-#include "hls_print.h"
+//#include "hls_print.h"
 
 void multiple_readwrite_tbl (
 		macro_op_t ops[NB_FU],
@@ -50,7 +50,6 @@ void multiple_readwrite_tbl (
 				reg_file[i][st_wr_addr[st_reg]] = value;
 # 			ifdef BLAS1
 			} else  {
-				//hls::print("PROUT %f\n", (float) value);
 				lc_reg[st_reg] = value;
 			}
 #			endif

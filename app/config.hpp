@@ -5,25 +5,26 @@
 
 constexpr int N = 64;
 
-constexpr int NB_FU_ADDMUL = 2;
-constexpr int NB_FU = NB_FU_ADDMUL;
+constexpr int NB_FU_ADDMUL = 3;
+constexpr int NB_FU_DIVSQRT = 1;
+constexpr int NB_FU = NB_FU_ADDMUL + NB_FU_DIVSQRT;
 
 constexpr int REG_SIZ = 27; // Upper bound for correlation is 5 per pb + 2 cst
 constexpr int MAX_PGM_SIZE = 64; // to be large
 
-// #define SUBCMV
-// #define PMUL
-// #define ABS
-// #define SQRT
-// #define ACCSUMV
-// #define CUTMIV
-// #define DIV
-// #define SETM
-#define TRGL
-#define BLAS1
+#define SUBCMV
+#define PMUL
+#define ABS
+#define SQRT
+#define ACCSUMV
+#define CUTMINV
+#define DIV
+#define SETM
+//#define TRGL
+//#define BLAS1
 
 // Internal constants
-constexpr int FU_LATENCY = 7;
+constexpr int FU_LATENCY = 13;
 constexpr int NO_RW = -1;
 constexpr int RED_REG = -2;
 
@@ -40,11 +41,13 @@ constexpr int RED_REG = -2;
 
 #define CU_INTERFACE \
 		ONECU(0), \
-		ONECU(1)
+		ONECU(1), \
+		ONECU(2)
 
 #define CU_INTERFACE_NAMES \
 		ONECU_NAME(0), \
-		ONECU_NAME(1)
+		ONECU_NAME(1), \
+		ONECU_NAME(2)
 
 
 /** Inplace operations are supported, except on:
@@ -97,7 +100,7 @@ enum op : uint8_t {
 	accsumcm,  // Accumulation of matrix in a vector by column-wise
 				   // (line-indepedant) sum of all the elements
 #	endif
-# 	ifdef CUTMIV
+# 	ifdef CUTMINV
 	cutminv,  // Pointwise selection: `if coef < threshold 1 else coef`
 #   endif
 #	ifdef DIV
