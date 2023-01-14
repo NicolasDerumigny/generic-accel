@@ -10,25 +10,37 @@ inline half do_minus(half value) {
 	return *(half*) &minus_in;
 }
 
+inline double do_minus_double(double value) {
+       ap_uint<64> minus_in = *(ap_uint<64>*) &value;
+       minus_in = ( ((~minus_in) & 0x8000000000000000) | (minus_in & 0x7FFF000000000000));
+       return *(double*) &minus_in;
+}
+
 #if defined(ABS) || defined(BLAS1)
 inline half do_abs(half value) {
 	ap_uint<16> abs = *(ap_uint<16>*) &value;
 	abs = abs & 0x7FFF;
 	return *(half*) &abs;
 }
+
+inline double do_abs_double(double value) {
+       ap_uint<64> abs = *(ap_uint<64>*) &value;
+       abs = abs & 0x7FFF000000000000;
+       return *(double*) &abs;
+}
 #endif
 
 void fu_addmul_axis (
 		op_t op,
-		half st, half ld0, half ld1,
+		dtype_t st, dtype_t ld0, dtype_t ld1,
 #		ifdef BLAS1
-		half loop_carried_val,
+		dtype_t loop_carried_val,
 #		endif
 		int i, int j, int k,
 #		ifdef BLAS1
 		int red_idx, int lat_step,
 #		endif
-		half &a, half &b, half &c) {
+		dtype_t &a, dtype_t &b, dtype_t &c) {
 #	pragma HLS inline off
 # 	pragma HLS pipeline II=1
 	a = 0;
@@ -147,7 +159,7 @@ void fu_addmul_axis (
 
 #		ifdef CUTMINV
 		case op::cutminv: {
-			a = (ld0<=CUTOFF)?(half)1.0:ld0;
+			a = (ld0<=CUTOFF)?(dtype_t)1.0:ld0;
 			break;
 		}
 #		endif
@@ -164,7 +176,7 @@ void fu_addmul_axis (
 		}
 
 		case op::setd1:{
-			a = (j==k)?(half)1.0f:ld0;
+			a = (j==k)?(dtype_t)1.0f:ld0;
 			break;
 		}
 #		endif
@@ -178,14 +190,14 @@ void fu_addmul_axis (
 #if defined(DIV) && defined(SQRT)
 void fu_divsqrt (
 		op_t op,
-		half &st, half ld0, half ld1,
+		dtype_t &st, dtype_t ld0, dtype_t ld1,
 		int i, int j, int k) {
 #	pragma HLS inline off
 # 	pragma HLS pipeline II=1
 # 	pragma HLS allocation operation instances=hadd limit=1
 # 	pragma HLS allocation operation instances=hmul limit=1
-	half ld_st = st;
-	half add_op0, add_op1;
+	dtype_t ld_st = st;
+	dtype_t add_op0, add_op1;
 
 	switch (op) {
 		default: {
@@ -194,7 +206,7 @@ void fu_divsqrt (
 
 		case op::sqrtv:
 		case op::sqrts: {
-			st = hls::half_sqrt(ld0);
+			st = hls::sqrt(ld0);
 			break;
 		}
 
@@ -218,7 +230,7 @@ void fu_divsqrt (
 		}
 
 		case op::setd1:{
-			st = (j==k)?(half)1.0f:ld0;
+			st = (j==k)?(dtype_t)1.0f:ld0;
 			break;
 		}
 

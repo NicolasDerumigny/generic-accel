@@ -22,6 +22,14 @@ constexpr int MAX_PGM_SIZE = 64; // to be large
 #define TRGL
 #define BLAS1
 
+#define DOUBLE
+
+#ifdef DOUBLE
+using dtype_t = double;
+#else
+using dtype_t = half;
+#endif
+
 // Internal constants
 constexpr int FU_LATENCY = 7;
 constexpr int NO_RW = -1;

@@ -8,7 +8,7 @@
 constexpr float CUTOFF = 0.1f;
 
 
-using gu_t = hls::stream<half>;
+using gu_t = hls::stream<dtype_t>;
 
 void generic_accel(
 		DMA_TYPE data_in[DMA_SIZE],

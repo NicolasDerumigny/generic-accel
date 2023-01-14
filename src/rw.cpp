@@ -4,12 +4,12 @@
 
 void multiple_readwrite_tbl (
 		macro_op_t ops[NB_FU],
-		half reg_file[REG_SIZ][N*N],
+		dtype_t reg_file[REG_SIZ][N*N],
 #		ifdef BLAS1
-		half lc_reg[NB_FU],
+		dtype_t lc_reg[NB_FU],
 #		endif
 		int ld0_addr[NB_FU], int ld1_addr[NB_FU], int st_ld_addr[NB_FU], int st_wr_addr[NB_FU],
-		half ld0[NB_FU], half ld1[NB_FU], half st_rd[NB_FU], half st_wr[NB_FU],
+		dtype_t ld0[NB_FU], dtype_t ld1[NB_FU], dtype_t st_rd[NB_FU], dtype_t st_wr[NB_FU],
 		bool write) {
 #	pragma HLS inline
 	int i,j;
@@ -30,7 +30,7 @@ void multiple_readwrite_tbl (
 			}
 		}
 		if (offset_ld>=0) {
-			half value = reg_file[i][offset_ld];
+			dtype_t value = reg_file[i][offset_ld];
 			for (j=0; j<NB_FU; j++) {
 #				pragma HLS unroll
 				if (ops[j].r0 == i)
@@ -42,7 +42,7 @@ void multiple_readwrite_tbl (
 			}
 		}
 		if (write and st_reg >= 0) {
-			half value = st_wr[st_reg];
+			dtype_t value = st_wr[st_reg];
 # 			ifdef BLAS1
 			if (st_wr_addr[st_reg] != RED_REG) {
 #			endif
@@ -57,61 +57,3 @@ void multiple_readwrite_tbl (
 		}
 	}
 }
-
-/*
-void multiple_read_tbl (
-		macro_op_t ops[NB_FU],
-		half reg_file[REG_SIZ][N*N],
-		int ld0_addr[NB_FU], int ld1_addr[NB_FU], int st_addr[NB_FU],
-		half ld0[NB_FU], half ld1[NB_FU], half st[NB_FU]) {
-#	pragma HLS inline
-	int i,j;
-	for (i=0; i<REG_SIZ; i++) {
-#		pragma HLS unroll
-
-		int offset = -1;
-		for (j=0; j<NB_FU; j++) {
-#			pragma HLS unroll
-			if (ops[j].r0 == i)
-				offset = ld0_addr[j];
-			if (ops[j].r1 == i)
-				offset = ld1_addr[j];
-			if (ops[j].r_dst == i)
-				offset = st_addr[j];
-		}
-		if (offset>=0) {
-			half value = reg_file[i][offset];
-			for (j=0; j<NB_FU; j++) {
-#				pragma HLS unroll
-				if (ops[j].r0 == i)
-					ld0[j] = value;
-				if (ops[j].r1 == i)
-					ld1[j] = value;
-				if (ops[j].r_dst == i)
-					st[j] = value;
-			}
-		}
-	}
-}
-
-void multiple_write_tbl (
-		macro_op_t ops[NB_FU],
-		half reg_file[REG_SIZ][N*N],
-		int st_addr[NB_FU],
-		half st[NB_FU]) {
-#	pragma HLS inline
-	int i, j;
-	for (i=0; i<REG_SIZ; i++) {
-#		pragma HLS unroll
-		int the_one = -1;
-		for (j=0; j<NB_FU; j++) {
-#			pragma HLS unroll
-			if (ops[j].r_dst == i) {
-				the_one = j;
-			}
-		}
-		if (the_one>=0)
-			reg_file[i][st_addr[the_one]] = st[the_one];
-	}
-}
-*/

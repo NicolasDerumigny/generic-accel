@@ -31,7 +31,7 @@ inline bool is_triangular(macro_op_t ops[NB_FU]) {
 
 int core(
 		macro_op_t ops[NB_FU],
-		half reg_file[REG_SIZ][N*N],
+		dtype_t reg_file[REG_SIZ][N*N],
 		CU_INTERFACE) {
 # 	pragma HLS inline
 	// To avoid read/write conflicts (loop carried dependency by read/writes
@@ -43,7 +43,7 @@ int core(
 #	pragma HLS ARRAY_PARTITION variable=ld0_addr dim=0 complete
 #	pragma HLS ARRAY_PARTITION variable=ld1_addr dim=0 complete
 #	pragma HLS ARRAY_PARTITION variable=st_addr dim=0 complete
-	half ld0[NB_FU], ld1[NB_FU], st[NB_FU];
+	dtype_t ld0[NB_FU], ld1[NB_FU], st[NB_FU];
 #	pragma HLS ARRAY_PARTITION variable=ld0 dim=0 complete
 #	pragma HLS ARRAY_PARTITION variable=ld1 dim=0 complete
 #	pragma HLS ARRAY_PARTITION variable=st dim=0 complete
@@ -54,7 +54,7 @@ int core(
 #	ifdef BLAS1
 	int red_idx = 0;
 	int lat_step = 0;
-	half loop_carried_vals[NB_FU];
+	dtype_t loop_carried_vals[NB_FU];
 #	pragma HLS ARRAY_PARTITION variable=loop_carried_vals dim=0 complete
 #	endif
 
@@ -70,7 +70,7 @@ int core(
 #		endif
 #		pragma HLS pipeline II=1
 
-		half res[NB_FU];
+		dtype_t res[NB_FU];
 		if (not cu0_res.empty()
 #			ifndef __SYNTHESIS__
 				and idx>=FU_LATENCY // Simulate latency
@@ -105,7 +105,7 @@ int core(
 		}
 
 		if (idx < bound) {
-			half a[NB_FU], b[NB_FU], c[NB_FU];
+			dtype_t a[NB_FU], b[NB_FU], c[NB_FU];
 			for (id=0; id<NB_FU_ADDMUL; id++) {
 #				pragma HLS unroll
 				fu_addmul_axis(ops[id].opcode,
@@ -158,7 +158,7 @@ int core(
 }
 
 void compute(ap_uint<8> pgml[MAX_PGM_SIZE*NB_FU*4],
-		half reg_file[REG_SIZ][N*N],
+		dtype_t reg_file[REG_SIZ][N*N],
 		CU_INTERFACE) {
 #	pragma HLS inline off
 	for (int pc=0; pc<MAX_PGM_SIZE; pc++) {
@@ -213,7 +213,7 @@ void generic_accel(
 #	pragma HLS INTERFACE mode=axis port=cu1_c
 #	pragma HLS INTERFACE mode=axis port=cu1_res
 
-	half reg_file[REG_SIZ][N*N];
+	dtype_t reg_file[REG_SIZ][N*N];
 #	pragma HLS BIND_STORAGE variable=reg_file type=ram_t2p impl=bram
 #	pragma HLS ARRAY_PARTITION variable=reg_file dim=1 complete
 #	pragma HLS ARRAY_PARTITION variable=reg_file dim=2 type=cyclic factor=2
@@ -222,7 +222,11 @@ void generic_accel(
 
 	measure: {
 #pragma HLS PROTOCOL mode=fixed
+#ifdef DOUBLE
+		recv_data_burst_double(data_in, reg_file);
+#else
 		recv_data_burst(data_in, reg_file);
+#endif
 		recv_pgm(pgml, pgm);
 		ap_wait();
 		*start_time = *counter;
@@ -231,6 +235,10 @@ void generic_accel(
 		ap_wait();
 		*end_time = *counter;
 		ap_wait();
+#ifdef DOUBLE
+		send_data_burst_double(data_out, reg_file);
+#else
 		send_data_burst(data_out, reg_file);
+#endif
 	}
 }
