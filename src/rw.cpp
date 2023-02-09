@@ -2,6 +2,7 @@
 
 //#include "hls_print.h"
 
+#ifndef VECTOR
 void multiple_readwrite_tbl (
 		macro_op_t ops[NB_FU],
 		half reg_file[REG_SIZ][N*N],
@@ -56,6 +57,75 @@ void multiple_readwrite_tbl (
 		}
 	}
 }
+#else
+void multiple_readwrite_tbl_2vect (
+		macro_op_t ops[NB_FU],
+		vtype reg_file[REG_SIZ][N*N/VLEN],
+#		ifdef BLAS1
+		half lc_reg[NB_FU],
+#		endif
+		int ld0_addr[NB_FU], int ld1_addr[NB_FU], int st_ld_addr[NB_FU], int st_wr_addr[NB_FU],
+		vtype ld0[NB_FU], vtype ld1[NB_FU], vtype st_rd[NB_FU], vtype st_wr[NB_FU],
+		mem_write_op_t write) {
+#	pragma HLS inline
+	int i,j;
+	for (i=0; i<REG_SIZ; i++) {
+#		pragma HLS unroll
+
+		int offset_ld = -1;
+		int st_reg = -1;
+		for (j=0; j<NB_FU; j++) {
+#			pragma HLS unroll
+			if (ops[j].r0 == i)
+				offset_ld = ld0_addr[j];
+			if (ops[j].r1 == i)
+				offset_ld = ld1_addr[j];
+			if (ops[j].r_dst == i) {
+				offset_ld = st_ld_addr[j];
+				st_reg = j;
+			}
+		}
+		if (offset_ld>=0) {
+			half value = reg_file[i][offset_ld];
+			for (j=0; j<NB_FU; j++) {
+#				pragma HLS unroll
+				if (ops[j].r0 == i)
+					ld0[j] = value;
+				if (ops[j].r1 == i)
+					ld1[j] = value;
+				if (ops[j].r_dst == i)
+					st_rd[j] = value;
+			}
+		}
+		if (write != mem_write_op_t::NO_WRITE and st_reg >= 0) {
+			vtype value = st_wr[st_reg];
+# 			ifdef BLAS1
+			if (st_wr_addr[st_reg] != RED_REG) {
+#			endif
+				//hls::print("%f\n", (float) value);
+				switch (write) {
+					default: {
+						break;
+					}
+					case (mem_write_op_t::VECT_WRITE): {
+						reg_file[i][st_wr_addr[st_reg]] = value;
+						break;
+					}
+					case (mem_write_op_t::SCAL_WRITE): {
+						ap_uint<16> *wr_loc = (ap_uint<16> *) reg_file[i];
+						wr_loc[2*st_wr_addr[st_reg]] = (ap_uint<16>) (value & 0xFFFF);
+						break;
+					}
+				}
+# 			ifdef BLAS1
+			} else  {
+				lc_reg[st_reg] = value;
+			}
+#			endif
+		}
+	}
+}
+#endif
 
 /*
 void multiple_read_tbl (

@@ -20,6 +20,15 @@ static inline DMA_TYPE cast_dma_type(half val0, half val1, half val2, half val3)
 	return (cast0 | (cast1 << 16) | (cast2 << 32) | (cast3 << 48));
 }
 
+static inline DMA_TYPE cast_dma_type_2vect(vtype val0, vtype val1) {
+# 	pragma HLS inline
+	DMA_TYPE cast0 = (DMA_TYPE) val0;
+	DMA_TYPE cast1 = (DMA_TYPE) val1;
+
+	return (cast0 | (cast1 << 32));
+}
+
+#ifndef VECTOR
 void recv_data_burst (DMA_TYPE data_in[DMA_SIZE], half reg_file[REG_SIZ][N*N]) {
 #	pragma HLS inline off
 	int reg_id, i,j, idx;
@@ -63,7 +72,51 @@ void recv_data_burst (DMA_TYPE data_in[DMA_SIZE], half reg_file[REG_SIZ][N*N]) {
 		}
 	}
 }
+#else
+void recv_data_burst_2vect (DMA_TYPE data_in[DMA_SIZE], vtype reg_file[REG_SIZ][N*N/VLEN]) {
+#	pragma HLS inline off
+	int reg_id, i,j, idx;
 
+	// for (reg_id=0; reg_id<REG_SIZ; reg_id++) {
+	//	for (i=0; i<N; i++) {
+	//		for (j=0; j<N; j+=4) {
+	i=0;
+	j=0;
+	reg_id=0;
+	for (idx=0; idx<DMA_SIZE; idx++) {
+#		pragma HLS pipeline
+#		pragma HLS dependence dependent=false type=inter variable=reg_file
+#		pragma HLS dependence dependent=false type=intra variable=reg_file
+		const DMA_TYPE val = data_in[idx];
+		int addr = access(i,j);
+		vtype *write_dst = reg_file[reg_id] + addr;
+		write_dst[0] = (vtype) ((val >> 0) & 0xffffffff);
+		write_dst[1] = (vtype) ((val >> 32) & 0xffffffff);
+
+		/*hls::print("INCOMING REC:\n");
+		hls::print("Rec: %f\n",
+				(float) reg_file[reg_id][addr + 0] );
+		hls::print("Rec: %f\n",
+				(float) reg_file[reg_id][addr + 1] );
+		hls::print("Rec: %f\n",
+				(float) reg_file[reg_id][addr + 2] );
+		hls::print("Rec: %f\n",
+				(float) reg_file[reg_id][addr + 3] );
+				*/
+		j+=4;
+		if (j==N) {
+			j=0;
+			i++;
+			if (i==N/2) {
+				i=0;
+				reg_id++;
+			}
+		}
+	}
+}
+#endif
+
+#ifndef VECTOR
 void send_data_burst (DMA_TYPE data_out[DMA_SIZE], half reg_file[REG_SIZ][N*N]) {
 #	pragma HLS inline off
 	int reg_id, i,j, idx;
@@ -77,15 +130,6 @@ void send_data_burst (DMA_TYPE data_out[DMA_SIZE], half reg_file[REG_SIZ][N*N]) 
 	for (idx=0; idx<DMA_SIZE; idx++) {
 #		pragma HLS pipeline
 		int addr = access(i,j);
-		/*hls::print("OUTGOING PACKET:\n");
-		hls::print("Rec: %f\n",
-				(float) reg_file[reg_id][addr + 0] );
-		hls::print("Rec: %f\n",
-				(float) reg_file[reg_id][addr + 1] );
-		hls::print("Rec: %f\n",
-				(float) reg_file[reg_id][addr + 2] );
-		hls::print("Rec: %f\n",
-				(float) reg_file[reg_id][addr + 3] );*/
 		const DMA_TYPE val = cast_dma_type(
 				reg_file[reg_id][addr+0],
 				reg_file[reg_id][addr+1],
@@ -104,6 +148,37 @@ void send_data_burst (DMA_TYPE data_out[DMA_SIZE], half reg_file[REG_SIZ][N*N]) 
 		}
 	}
 }
+#else
+void send_data_burst_2vect (DMA_TYPE data_out[DMA_SIZE], vtype reg_file[REG_SIZ][N*N/VLEN]) {
+#	pragma HLS inline off
+	int reg_id, i,j, idx;
+
+	//for (reg_id=0; reg_id<REG_SIZ; reg_id++) {
+	//	for (i=0; i<N; i++) {
+	//		for (j=0; j<N/4; j++) {
+	i=0;
+	j=0;
+	reg_id=0;
+	for (idx=0; idx<DMA_SIZE; idx++) {
+#		pragma HLS pipeline
+		int addr = access(i,j);
+		const DMA_TYPE val = cast_dma_type_2vect(
+				reg_file[reg_id][addr+0],
+				reg_file[reg_id][addr+1]
+			);
+		data_out[idx] = val;
+		j+=4;
+		if (j==N) {
+			j=0;
+			i++;
+			if (i==N) {
+				i=0;
+				reg_id++;
+			}
+		}
+	}
+}
+#endif
 
 void recv_pgm (ap_uint<8> op_loc[MAX_PGM_SIZE*NB_FU*4], ap_uint<8> op_remote[MAX_PGM_SIZE*NB_FU*4]) {
 #	pragma HLS inline off

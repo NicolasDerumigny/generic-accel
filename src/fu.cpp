@@ -10,14 +10,26 @@ inline half do_minus(half value) {
 	return *(half*) &minus_in;
 }
 
+inline half do_minus_2vect(vtype value) {
+#	pragma HLS inline
+	value = ( ((~value) & 0x80008000) | (value & 0x7FFF7FFF));
+	return value;
+}
+
 #if defined(ABS) || defined(BLAS1)
 inline half do_abs(half value) {
 	ap_uint<16> abs = *(ap_uint<16>*) &value;
 	abs = abs & 0x7FFF;
 	return *(half*) &abs;
 }
+
+inline half do_abs_2vect(vtype value) {
+	value = value & 0x7FFF7FFF;
+	return value;
+}
 #endif
 
+#ifndef VECTOR
 void fu_addmul_axis (
 		op_t op,
 		half st, half ld0, half ld1,
@@ -29,10 +41,23 @@ void fu_addmul_axis (
 		int red_idx, int lat_step,
 #		endif
 		half &a, half &b, half &c) {
+#else
+void fu_addmul_axis_2vect (
+		op_t op,
+		vtype st, vtype ld0, vtype ld1,
+#		ifdef BLAS1
+		half loop_carried_val,
+#		endif
+		int i, int j, int k,
+#		ifdef BLAS1
+		int red_idx, int lat_step,
+#		endif
+		vtype &a, vtype &b, vtype &c) {
+#endif
 #	pragma HLS inline off
 # 	pragma HLS pipeline II=1
 	a = 0;
-	b = 1;
+	b = 0x3c003c00; // vector (1,1)
 	c = 0;
 
 	switch (op) {

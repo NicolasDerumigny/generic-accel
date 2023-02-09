@@ -31,7 +31,7 @@ inline bool is_triangular(macro_op_t ops[NB_FU]) {
 
 int core(
 		macro_op_t ops[NB_FU],
-		half reg_file[REG_SIZ][N*N],
+		vtype reg_file[REG_SIZ][N*N/VLEN],
 		CU_INTERFACE) {
 # 	pragma HLS inline
 	// To avoid read/write conflicts (loop carried dependency by read/writes
@@ -43,7 +43,7 @@ int core(
 #	pragma HLS ARRAY_PARTITION variable=ld0_addr dim=0 complete
 #	pragma HLS ARRAY_PARTITION variable=ld1_addr dim=0 complete
 #	pragma HLS ARRAY_PARTITION variable=st_addr dim=0 complete
-	half ld0[NB_FU], ld1[NB_FU], st[NB_FU];
+	vtype ld0[NB_FU], ld1[NB_FU], st[NB_FU];
 #	pragma HLS ARRAY_PARTITION variable=ld0 dim=0 complete
 #	pragma HLS ARRAY_PARTITION variable=ld1 dim=0 complete
 #	pragma HLS ARRAY_PARTITION variable=st dim=0 complete
@@ -54,7 +54,7 @@ int core(
 #	ifdef BLAS1
 	int red_idx = 0;
 	int lat_step = 0;
-	half loop_carried_vals[NB_FU];
+	vtype loop_carried_vals[NB_FU];
 #	pragma HLS ARRAY_PARTITION variable=loop_carried_vals dim=0 complete
 #	endif
 
@@ -64,7 +64,7 @@ int core(
 #	endif
 
 #	if defined(DIV) && defined(SQRT)
-	half st_div[FU_LATENCY][NB_FU_DIVSQRT];
+	vtype st_div[FU_LATENCY][NB_FU_DIVSQRT];
 #	endif
 	for (idx=0; idx<bound+FU_LATENCY; idx++) {
 #		pragma HLS loop_flatten off
@@ -77,7 +77,7 @@ int core(
 #		endif
 #		pragma HLS pipeline II=1
 
-		half res[NB_FU];
+		vtype res[NB_FU];
 		if (not cu0_res.empty()
 #			ifndef __SYNTHESIS__
 				and idx>=FU_LATENCY // Simulate latency
@@ -86,7 +86,9 @@ int core(
 			CUres(0) >> res[0];
 			CUres(1) >> res[1];
 			CUres(2) >> res[2];
+#			ifdef DIV
 			res[3] = st_div[idx_st_addr][0];
+#			endif
 		}
 
 		for (id=0; id<NB_FU; id++) {
@@ -98,7 +100,7 @@ int core(
 			ld0_addr[id], ld1_addr[id], st_addr_ld[id]);
 		}
 
-		multiple_readwrite_tbl (
+		multiple_readwrite_tbl_2vect (
 				ops,
 				reg_file,
 #				ifdef BLAS1
@@ -106,7 +108,7 @@ int core(
 #				endif
 				ld0_addr, ld1_addr, st_addr_ld, st_addr[idx_st_addr],
 				ld0, ld1, st, res,
-				idx >= FU_LATENCY);
+				(idx >= FU_LATENCY)?mem_write_op_t::VECT_WRITE:mem_write_op_t::NO_WRITE);
 
 		for (id=0; id<NB_FU; id++) {
 #			pragma HLS unroll
@@ -114,10 +116,10 @@ int core(
 		}
 
 		if (idx < bound) {
-			half a[NB_FU], b[NB_FU], c[NB_FU];
+			vtype a[NB_FU], b[NB_FU], c[NB_FU];
 			for (id=0; id<NB_FU_ADDMUL; id++) {
 #				pragma HLS unroll
-				fu_addmul_axis(ops[id].opcode,
+				fu_addmul_axis_2vect(ops[id].opcode,
 					st[id], ld0[id], ld1[id],
 #					ifdef BLAS1
 					loop_carried_vals[id],
@@ -128,9 +130,11 @@ int core(
 #					endif
 					a[id], b[id], c[id]);
 			}
+#			ifdef DIV
 			fu_divsqrt(ops[3].opcode,
 					st_div[idx_st_addr][0], ld0[3], ld1[3],
 					i, j, k);
+#			endif
 
 #			ifdef __SYNTHESIS__
 			CUa(0) << a[0];
@@ -151,12 +155,13 @@ int core(
 
 
 		increment_idx(idx_st_addr, FU_LATENCY);
-		increment_idx(k, N);
+		increment_idx(k, N/VLEN);
 		if (k==0) {
 			increment_idx(j, N);
 			if (j==0)
 				i++;
 #			ifdef TRGL
+			//FIXME
 			if (is_tr) {
 				k = j;
 			}
@@ -174,7 +179,7 @@ int core(
 }
 
 void compute(ap_uint<8> pgml[MAX_PGM_SIZE*NB_FU*4],
-		half reg_file[REG_SIZ][N*N],
+		vtype reg_file[REG_SIZ][N*N/VLEN],
 		CU_INTERFACE) {
 #	pragma HLS inline off
 	for (int pc=0; pc<MAX_PGM_SIZE; pc++) {
@@ -233,7 +238,7 @@ void generic_accel(
 #	pragma HLS INTERFACE mode=axis port=cu2_c
 #	pragma HLS INTERFACE mode=axis port=cu2_res
 
-	half reg_file[REG_SIZ][N*N];
+	vtype reg_file[REG_SIZ][N*N/VLEN];
 #	pragma HLS BIND_STORAGE variable=reg_file type=ram_t2p impl=bram
 #	pragma HLS ARRAY_PARTITION variable=reg_file dim=1 complete
 #	pragma HLS ARRAY_PARTITION variable=reg_file dim=2 type=cyclic factor=2
@@ -242,7 +247,7 @@ void generic_accel(
 
 	measure: {
 #pragma HLS PROTOCOL mode=fixed
-		recv_data_burst(data_in, reg_file);
+		recv_data_burst_2vect(data_in, reg_file);
 		recv_pgm(pgml, pgm);
 		ap_wait();
 		*start_time = *counter;
@@ -251,6 +256,6 @@ void generic_accel(
 		ap_wait();
 		*end_time = *counter;
 		ap_wait();
-		send_data_burst(data_out, reg_file);
+		send_data_burst_2vect(data_out, reg_file);
 	}
 }

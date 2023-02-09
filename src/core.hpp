@@ -5,7 +5,7 @@
 #include "dma.hpp"
 #include "hls_stream.h"
 
-using gu_t = hls::stream<half>;
+using gu_t = hls::stream<vtype>;
 
 void generic_accel(
 		DMA_TYPE data_in[DMA_SIZE],

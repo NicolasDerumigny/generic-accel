@@ -13,7 +13,7 @@ int lbg (macro_op_t ops[NB_FU]) {
 			}
 
 			case op::mulmm: {
-				ret = max(ret, N*N*N);
+				ret = max(ret, N*N*N/VLEN);
 				break;
 			}
 
@@ -45,7 +45,7 @@ int lbg (macro_op_t ops[NB_FU]) {
 			case op::setd1:
 #			endif
 			{
-				ret = max(ret, N*N);
+				ret = max(ret, N*N/VLEN);
 				break;
 			}
 
@@ -71,7 +71,7 @@ int lbg (macro_op_t ops[NB_FU]) {
 			case op::copyv:
 #			endif
 			{
-				ret = max(ret, N);
+				ret = max(ret, N/VLEN);
 				break;
 			}
 
@@ -90,6 +90,7 @@ int lbg (macro_op_t ops[NB_FU]) {
 			}
 
 #			ifdef TRGL
+			//FIXME
 			case op::multrmm: {
 				ret = max(ret, N*N*(N+1)/2);
 				break;

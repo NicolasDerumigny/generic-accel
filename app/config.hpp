@@ -6,24 +6,34 @@
 constexpr int N = 64;
 
 constexpr int NB_FU_ADDMUL = 3;
-constexpr int NB_FU_DIVSQRT = 1;
+constexpr int NB_FU_DIVSQRT = 0;
 constexpr int NB_FU = NB_FU_ADDMUL + NB_FU_DIVSQRT;
 
 constexpr int REG_SIZ = 27; // Upper bound for correlation is 5 per pb + 2 cst
 constexpr int MAX_PGM_SIZE = 64; // to be large
 
-#define SUBCMV
-#define PMUL
-#define ABS
-#define SQRT
-#define ACCSUMV
-#define CUTMINV
-#define DIV
-#define SETM
+//#define SUBCMV
+//#define PMUL
+//#define ABS
+//#define SQRT
+//#define ACCSUMV
+//#define CUTMINV
+//#define DIV
+//#define SETM
 //#define TRGL
 //#define BLAS1
 
 // Internal constants
+#define VECTOR
+constexpr int VLEN = 2;
+
+#ifdef __SYNTHESIS__
+# include "ap_int.h"
+using vtype = ap_uint<VLEN*16>;
+#else
+using vtype = uint32_t;
+#endif
+
 constexpr int FU_LATENCY = 13;
 constexpr int NO_RW = -1;
 constexpr int RED_REG = -2;
