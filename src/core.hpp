@@ -13,7 +13,7 @@ void generic_accel(
 		volatile ap_uint<64> *counter,
 		ap_uint<64> *start_time,
 		ap_uint<64> *end_time,
-		ap_uint<8> pgm[MAX_PGM_SIZE*NB_FU*4],
+		ap_uint<8> pgm[MAX_PGM_SIZE*NB_FU*4]
 		CU_INTERFACE);
 
 #endif // CORE_HPP

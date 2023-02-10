@@ -29,7 +29,7 @@ void fu_addmul_axis (
 		int red_idx, int lat_step,
 #		endif
 		half &a, half &b, half &c) {
-#	pragma HLS inline off
+//#	pragma HLS inline off
 # 	pragma HLS pipeline II=1
 	a = 0;
 	b = 1;
@@ -180,7 +180,7 @@ void fu_divsqrt (
 		op_t op,
 		half &st, half ld0, half ld1,
 		int i, int j, int k) {
-#	pragma HLS inline off
+//#	pragma HLS inline off
 # 	pragma HLS pipeline II=1
 
 	switch (op) {

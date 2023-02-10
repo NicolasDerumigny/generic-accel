@@ -31,7 +31,7 @@ inline bool is_triangular(macro_op_t ops[NB_FU]) {
 
 int core(
 		macro_op_t ops[NB_FU],
-		half reg_file[REG_SIZ][N*N],
+		half reg_file[REG_SIZ][N*N]
 		CU_INTERFACE) {
 # 	pragma HLS inline
 	// To avoid read/write conflicts (loop carried dependency by read/writes
@@ -44,6 +44,10 @@ int core(
 #	pragma HLS ARRAY_PARTITION variable=ld1_addr dim=0 complete
 #	pragma HLS ARRAY_PARTITION variable=st_addr dim=0 complete
 	half ld0[NB_FU], ld1[NB_FU], st[NB_FU];
+#	ifdef  HLS_CU
+	half st_loop_carried[FU_LATENCY][NB_FU];
+#	pragma HLS ARRAY_PARTITION variable=st_loop_carried dim=0 complete
+#	endif
 #	pragma HLS ARRAY_PARTITION variable=ld0 dim=0 complete
 #	pragma HLS ARRAY_PARTITION variable=ld1 dim=0 complete
 #	pragma HLS ARRAY_PARTITION variable=st dim=0 complete
@@ -63,7 +67,7 @@ int core(
 	const bool is_tr = is_triangular(ops);
 #	endif
 
-#	if defined(DIV) && defined(SQRT)
+#	if defined(DIV) && defined(SQRT) && !defined(HLS_CU)
 	half st_div[FU_LATENCY][NB_FU_DIVSQRT];
 #	endif
 	for (idx=0; idx<bound+FU_LATENCY; idx++) {
@@ -72,21 +76,40 @@ int core(
 #		ifdef BLAS1
 #		pragma HLS dependence dependent=false type=inter variable=loop_carried_vals
 #		endif
-#		if defined(DIV) && defined(SQRT)
+#		if defined(DIV) && defined(SQRT) && !defined(HLS_CU)
 #		pragma HLS dependence dependent=false type=inter variable=st_div
+#		endif
+#		ifdef  HLS_CU
+#		pragma HLS dependence dependent=false type=inter variable=st_loop_carried
+#		pragma HLS dependence dependent=false type=intra direction=waw variable=st_loop_carried
 #		endif
 #		pragma HLS pipeline II=1
 
 		half res[NB_FU];
-		if (not cu0_res.empty()
-#			ifndef __SYNTHESIS__
-				and idx>=FU_LATENCY // Simulate latency
+#		ifdef  HLS_CU
+		half *st_buf = st_loop_carried[idx_st_addr];
+#		endif
+		if (
+#			ifdef HLS_CU
+				idx>=FU_LATENCY
+#			else
+				not cu0_res.empty()
+#				ifndef __SYNTHESIS__
+					and idx>=FU_LATENCY // Simulate latency
+#				endif
 #			endif
 		) { // All CU are used with the same rate, so the queue should be filled at the same pace
-			CUres(0) >> res[0];
-			CUres(1) >> res[1];
-			CUres(2) >> res[2];
-			res[3] = st_div[idx_st_addr][0];
+#			ifndef HLS_CU
+				CUres(0) >> res[0];
+				CUres(1) >> res[1];
+				CUres(2) >> res[2];
+				res[3] = st_div[idx_st_addr][0];
+#			else
+				for (id=0; id<NB_FU; ++id) {
+#					pragma HLS UNROLL
+					res[id] = st_buf[id];
+				}
+#			endif
 		}
 
 		for (id=0; id<NB_FU; id++) {
@@ -114,7 +137,7 @@ int core(
 		}
 
 		if (idx < bound) {
-			half a[NB_FU], b[NB_FU], c[NB_FU];
+			half a[NB_FU_ADDMUL], b[NB_FU_ADDMUL], c[NB_FU_ADDMUL];
 			for (id=0; id<NB_FU_ADDMUL; id++) {
 #				pragma HLS unroll
 				fu_addmul_axis(ops[id].opcode,
@@ -128,24 +151,36 @@ int core(
 #					endif
 					a[id], b[id], c[id]);
 			}
-			fu_divsqrt(ops[3].opcode,
-					st_div[idx_st_addr][0], ld0[3], ld1[3],
+			fu_divsqrt(ops[NB_FU_ADDMUL].opcode,
+#			ifndef  HLS_CU
+					&st_div[idx_st_addr][0],
+#			else
+					st_buf[NB_FU_ADDMUL],
+#			endif
+					ld0[NB_FU_ADDMUL], ld1[NB_FU_ADDMUL],
 					i, j, k);
 
-#			ifdef __SYNTHESIS__
-			CUa(0) << a[0];
-			CUa(1) << a[1];
-			CUa(2) << a[2];
-			CUb(0) << b[0];
-			CUb(1) << b[1];
-			CUb(2) << b[2];
-			CUc(0) << c[0];
-			CUc(1) << c[1];
-			CUc(2) << c[2];
+#			ifndef  HLS_CU
+#				ifdef __SYNTHESIS__
+				CUa(0) << a[0];
+				CUa(1) << a[1];
+				CUa(2) << a[2];
+				CUb(0) << b[0];
+				CUb(1) << b[1];
+				CUb(2) << b[2];
+				CUc(0) << c[0];
+				CUc(1) << c[1];
+				CUc(2) << c[2];
+#				else
+				CUres(0) << a[0]*b[0]+c[0];
+				CUres(1) << a[1]*b[1]+c[1];
+				CUres(2) << a[2]*b[2]+c[2];
+#				endif
 #			else
-			CUres(0) << a[0]*b[0]+c[0];
-			CUres(1) << a[1]*b[1]+c[1];
-			CUres(2) << a[2]*b[2]+c[2];
+				for (id=0; id<NB_FU_ADDMUL; id++) {
+#					pragma HLS unroll
+					st_buf[id] = a[id]*b[id] + c[id];
+				}
 #			endif
 		}
 
@@ -174,7 +209,7 @@ int core(
 }
 
 void compute(ap_uint<8> pgml[MAX_PGM_SIZE*NB_FU*4],
-		half reg_file[REG_SIZ][N*N],
+		half reg_file[REG_SIZ][N*N]
 		CU_INTERFACE) {
 #	pragma HLS inline off
 	for (int pc=0; pc<MAX_PGM_SIZE; pc++) {
@@ -194,7 +229,7 @@ void compute(ap_uint<8> pgml[MAX_PGM_SIZE*NB_FU*4],
 
 		int nb_it = core(
 			m_ins,
-			reg_file,
+			reg_file
 			CU_INTERFACE_NAMES
 		);
 
@@ -209,7 +244,7 @@ void generic_accel(
 		volatile ap_uint<64> *counter,
 		ap_uint<64> *start_time,
 		ap_uint<64> *end_time,
-		ap_uint<8> pgm[MAX_PGM_SIZE*NB_FU*4],
+		ap_uint<8> pgm[MAX_PGM_SIZE*NB_FU*4]
 		CU_INTERFACE) {
 #	pragma HLS INTERFACE mode=s_axilite port=return
 #	pragma HLS INTERFACE mode=s_axilite port=start_time
@@ -220,6 +255,8 @@ void generic_accel(
 #	pragma HLS INTERFACE mode=s_axilite port=pgm
 #	pragma HLS INTERFACE mode=m_axi bundle=data port=data_in offset=slave
 #	pragma HLS INTERFACE mode=m_axi bundle=data port=data_out offset=slave
+
+#ifndef HLS_CU
 #	pragma HLS INTERFACE mode=axis port=cu0_a
 #	pragma HLS INTERFACE mode=axis port=cu0_b
 #	pragma HLS INTERFACE mode=axis port=cu0_c
@@ -232,6 +269,7 @@ void generic_accel(
 #	pragma HLS INTERFACE mode=axis port=cu2_b
 #	pragma HLS INTERFACE mode=axis port=cu2_c
 #	pragma HLS INTERFACE mode=axis port=cu2_res
+#endif
 
 	half reg_file[REG_SIZ][N*N];
 #	pragma HLS BIND_STORAGE variable=reg_file type=ram_t2p impl=bram
@@ -247,7 +285,9 @@ void generic_accel(
 		ap_wait();
 		*start_time = *counter;
 		ap_wait();
-		compute (pgml, reg_file, CU_INTERFACE_NAMES);
+		compute (pgml,
+				reg_file
+				CU_INTERFACE_NAMES);
 		ap_wait();
 		*end_time = *counter;
 		ap_wait();

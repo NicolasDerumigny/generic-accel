@@ -28,6 +28,9 @@ constexpr int FU_LATENCY = 13;
 constexpr int NO_RW = -1;
 constexpr int RED_REG = -2;
 
+#define HLS_CU
+
+#ifndef HLS_CU
 #define CUa(id) cu ## id ##_a
 #define CUb(id) cu ## id ##_b
 #define CUc(id) cu ## id ##_c
@@ -39,15 +42,21 @@ constexpr int RED_REG = -2;
 #define ONECU_NAME(id) \
 		CUa(id), CUb(id), CUc(id), CUres(id)
 
-#define CU_INTERFACE \
+#define CU_INTERFACE ,\
 		ONECU(0), \
 		ONECU(1), \
 		ONECU(2)
 
-#define CU_INTERFACE_NAMES \
+#define CU_INTERFACE_NAMES ,\
 		ONECU_NAME(0), \
 		ONECU_NAME(1), \
 		ONECU_NAME(2)
+#else
+
+#define CU_INTERFACE
+#define CU_INTERFACE_NAMES
+
+#endif
 
 
 /** Inplace operations are supported, except on:

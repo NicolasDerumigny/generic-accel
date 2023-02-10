@@ -24,7 +24,4 @@ set_part {xczu7ev-ffvc1156-2-e}
 create_clock -period 10 -name default
 config_export -flow impl -format ip_catalog -rtl verilog -vivado_clock 10 -vivado_phys_opt all
 source "./generic-accel/zcu104/directives.tcl"
-csim_design
-csynth_design
-cosim_design
 export_design -rtl verilog -format ip_catalog
