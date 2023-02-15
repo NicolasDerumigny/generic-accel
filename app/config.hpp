@@ -5,23 +5,23 @@
 
 constexpr int N = 64;
 
-constexpr int NB_FU_ADDMUL = 3;
-constexpr int NB_FU_DIVSQRT = 1;
+constexpr int NB_FU_ADDMUL = 2;
+constexpr int NB_FU_DIVSQRT = 0;
 constexpr int NB_FU = NB_FU_ADDMUL + NB_FU_DIVSQRT;
 
 constexpr int REG_SIZ = 27; // Upper bound for correlation is 5 per pb + 2 cst
 constexpr int MAX_PGM_SIZE = 64; // to be large
 
-#define SUBCMV
-#define PMUL
-#define ABS
-#define SQRT
-#define ACCSUMV
-#define CUTMINV
-#define DIV
-#define SETM
-//#define TRGL
-//#define BLAS1
+// #define SUBCMV
+// #define PMUL
+// #define ABS
+// #define SQRT
+// #define ACCSUMV
+// #define CUTMINV
+// #define DIV
+// #define SETM
+#define TRGL
+#define BLAS1
 
 // Internal constants
 constexpr int FU_LATENCY = 13;

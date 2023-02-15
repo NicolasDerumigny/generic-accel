@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 import sys
+import os
 
-NB_FU = 4
+NB_FU = os.environ.get('NB_FU')
+if NB_FU is None:
+    raise Exception("NB_FU not defined")
+else:
+    NB_FU=int(NB_FU)
 
 
 def usage():
