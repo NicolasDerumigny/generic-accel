@@ -5,17 +5,7 @@
     <downStreamTool>
         <DownStreamTool name="vivado"/>
     </downStreamTool>
-    <targetInfo>
-        <TargetInfo value="xczu7ev:-ffvc1156:-2-e"/>
-    </targetInfo>
-    <libraryList>
-        <library name="DefaultPlatform" value="xilinx/zynquplus/zynquplus"/>
-    </libraryList>
-    <flowTarget value="vivado"/>
     <synthesis askAgain="true"/>
-    <clockList>
-        <clock default="false" name="default" period="10"/>
-    </clockList>
     <config>
         <config_export flow="impl" format="ip_catalog" rtl="verilog" vivado_clock="10" vivado_phys_opt="all"/>
     </config>
@@ -50,8 +40,8 @@
             </RTLs>
         </UIAutoSimConf>
     </UIConfigurations>
-    <ExportDesign askAgain="true" evaluate="true" flow="false" flowChoice="impl" formatName="ip_catalog" rtl="verilog" rtlButton="true" rtlCombo="verilog">
-        <Format formatName="ip_catalog"/>
+    <ExportDesign askAgain="true" evaluate="true" flow="false" flowChoice="impl" formatName="ip_catalog" rtl="vlog" rtlButton="true" rtlCombo="verilog">
+        <Format formatName="ip_catalog" description="" vendor="" library="" ipname="generic_accel" version="1.0" display_name="" taxonomy=""/>
         <Format formatName="sysgen"/>
         <Format formatName="sysgen_ise"/>
         <Format formatName="syn_dcp"/>
@@ -71,5 +61,15 @@
     <project>
         <value string="generic-accel"/>
     </project>
+    <flowTarget value="vivado"/>
+    <targetInfo>
+        <TargetInfo value="xczu7ev:-ffvc1156:-2-e"/>
+    </targetInfo>
+    <libraryList>
+        <library value="xilinx/zynquplus/zynquplus" name="DefaultPlatform"/>
+    </libraryList>
+    <clockList>
+        <clock name="default" default="false" period="20"/>
+    </clockList>
 </solution>
 

@@ -81,13 +81,12 @@ int core(
 #		endif
 #		ifdef  HLS_CU
 #		pragma HLS dependence dependent=false type=inter variable=st_loop_carried
-#		pragma HLS dependence dependent=false type=intra direction=waw variable=st_loop_carried
 #		endif
 #		pragma HLS pipeline II=1
 
+
+#		ifndef HLS_CU
 		half res[NB_FU];
-#		ifdef  HLS_CU
-		half *st_buf = st_loop_carried[idx_st_addr];
 #		endif
 		if (
 #			ifdef HLS_CU
@@ -104,11 +103,6 @@ int core(
 				CUres(1) >> res[1];
 				CUres(2) >> res[2];
 				res[3] = st_div[idx_st_addr][0];
-#			else
-				for (id=0; id<NB_FU; ++id) {
-#					pragma HLS UNROLL
-					res[id] = st_buf[id];
-				}
 #			endif
 		}
 
@@ -128,7 +122,12 @@ int core(
 				loop_carried_vals,
 #				endif
 				ld0_addr, ld1_addr, st_addr_ld, st_addr[idx_st_addr],
-				ld0, ld1, st, res,
+				ld0, ld1, st,
+#			ifndef HLS_CU
+				res,
+#			else
+				st_loop_carried[idx_st_addr],
+#			endif
 				idx >= FU_LATENCY);
 
 		for (id=0; id<NB_FU; id++) {
@@ -151,6 +150,7 @@ int core(
 #					endif
 					a[id], b[id], c[id]);
 			}
+#			ifdef DIV
 			fu_divsqrt(ops[NB_FU_ADDMUL].opcode,
 #			ifndef  HLS_CU
 					&st_div[idx_st_addr][0],
@@ -159,6 +159,7 @@ int core(
 #			endif
 					ld0[NB_FU_ADDMUL], ld1[NB_FU_ADDMUL],
 					i, j, k);
+#			endif
 
 #			ifndef  HLS_CU
 #				ifdef __SYNTHESIS__
@@ -179,7 +180,7 @@ int core(
 #			else
 				for (id=0; id<NB_FU_ADDMUL; id++) {
 #					pragma HLS unroll
-					st_buf[id] = a[id]*b[id] + c[id];
+					st_loop_carried[idx_st_addr][id] = a[id]*b[id] + c[id];
 				}
 #			endif
 		}

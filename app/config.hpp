@@ -24,7 +24,7 @@ constexpr int MAX_PGM_SIZE = 64; // to be large
 #define BLAS1
 
 // Internal constants
-constexpr int FU_LATENCY = 13;
+constexpr int FU_LATENCY = 3;
 constexpr int NO_RW = -1;
 constexpr int RED_REG = -2;
 

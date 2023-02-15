@@ -71,13 +71,9 @@ void init_prgm_simple(ap_uint<8> PRGM[MAX_PGM_SIZE][NB_FU][4]) {
 
 	op0(addm, r[3], r[4], r[5]);
 	op1(subm, r[0], r[1], r[2]);
-	op2(noop, null, null, null);
-	op3(noop, null, null, null);
 
 	op0(mulmm, r[1], r[3], r[0]);
 	op1(noop, null, null, null);
-	op2(noop, null, null, null);
-	op3(noop, null, null, null);
 	halt();
 
 	//op0(dotv, r[0], r[3], r[1]);
@@ -89,6 +85,7 @@ void init_prgm_simple(ap_uint<8> PRGM[MAX_PGM_SIZE][NB_FU][4]) {
 	halt();
 }
 
+#ifdef DIV
 void init_prgm(ap_uint<8> PRGM[MAX_PGM_SIZE][NB_FU][4]) {
 	init();
 
@@ -180,6 +177,7 @@ void init_prgm(ap_uint<8> PRGM[MAX_PGM_SIZE][NB_FU][4]) {
 
 	halt();
 }
+#endif
 
 inline int access(int reg_id, int i, int j) {
 	return reg_id*N*N + i*N + j;
@@ -263,8 +261,8 @@ int main() {
 	std::cout<<"Starting..."<<std::endl;
 	// Initialise our data structures
 	ap_uint<8> PRGM[MAX_PGM_SIZE][NB_FU][4];
-	//init_prgm_simple (PRGM);
-	init_prgm(PRGM);
+	init_prgm_simple (PRGM);
+	//init_prgm(PRGM);
 
 	std::cout<<"Init data..."<<std::endl;
 	// Initialise the channels
@@ -291,7 +289,7 @@ int main() {
 					corr[i][j] = 100000;
 					data[i][j] = reg_file[access(id, i, j)];
 				}
-				//reg_file[access(id, i, j)] = (i==j)?N:1;
+				reg_file[access(id, i, j)] = (i==j)?N:1;
 			}
 		}
 	}
